@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BalanceSheetSection } from "./components/BalanceSheetSection";
 import { CompanyAnalysisPanel } from "./components/CompanyAnalysisPanel";
 import ExerciseAnalyzer from "./components/ExerciseAnalyzer";
+import FormulaCalculator from "./components/FormulaCalculator";
 import { AlertCircle, CheckCircle2, RotateCcw } from "lucide-react";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
@@ -17,7 +18,7 @@ interface BalanceSheetItemData {
 const createEmptyAttivoData = (): BalanceSheetItemData[] => [
   {
     id: "crediti-soci",
-    label: "A. CREDITI V/ SOCI (Receivables from shareholders)",
+    label: "A. CREDITI V/ SOCI",
     value: 0,
     level: 0,
   },
@@ -547,6 +548,11 @@ export default function App() {
 
         {/* Exercise Analyzer */}
         <ExerciseAnalyzer exerciseText={exerciseText} />
+
+        {/* Formula Calculator */}
+        <div className="mt-6">
+          <FormulaCalculator />
+        </div>
 
         {/* Year Selector and Reset Button */}
         <div className="mb-6 flex items-center justify-between gap-4">
