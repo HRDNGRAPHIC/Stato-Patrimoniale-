@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { BalanceSheetSection } from "./components/BalanceSheetSection";
-import { CompanyAnalysisPanel } from "./components/CompanyAnalysisPanel";
+import { CompanyAnalysisPanel, getDefaultStructure, type FinancialStructure } from "./components/CompanyAnalysisPanel";
 import ExerciseAnalyzer from "./components/ExerciseAnalyzer";
 import FormulaCalculator from "./components/FormulaCalculator";
-import { AlertCircle, CheckCircle2, RotateCcw } from "lucide-react";
+import { AlertCircle, CheckCircle2, RotateCcw, Sun, Moon } from "lucide-react";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./components/ui/dialog";
+import { Button } from "./components/ui/button";
 
 interface BalanceSheetItemData {
   id: string;
@@ -18,13 +20,13 @@ interface BalanceSheetItemData {
 const createEmptyAttivoData = (): BalanceSheetItemData[] => [
   {
     id: "crediti-soci",
-    label: "A. CREDITI V/ SOCI",
+    label: "A. Crediti v/soci",
     value: 0,
     level: 0,
   },
   {
     id: "immobilizzazioni",
-    label: "A. IMMOBILIZZAZIONI",
+    label: "B. Immobilizzazioni",
     value: 0,
     level: 0,
     children: [
@@ -104,7 +106,7 @@ const createEmptyAttivoData = (): BalanceSheetItemData[] => [
   },
   {
     id: "attivo-circolante",
-    label: "B. ATTIVO CIRCOLANTE",
+    label: "C. Attivo circolante",
     value: 0,
     level: 0,
     children: [
@@ -186,7 +188,7 @@ const createEmptyAttivoData = (): BalanceSheetItemData[] => [
   },
   {
     id: "ratei-risconti-attivi",
-    label: "C. RATEI E RISCONTI ATTIVI",
+    label: "D. Ratei e risconti attivi",
     value: 0,
     level: 0,
   },
@@ -315,19 +317,60 @@ const createEmptyPassivoData = (): BalanceSheetItemData[] => [
 
 export default function App() {
   const [companyType, setCompanyType] = useState<"industrial" | "mercantile">("industrial");
-  const [selectedYear, setSelectedYear] = useState<"N" | "N-1">("N");
   const [exerciseText, setExerciseText] = useState("");
+  const [darkMode, setDarkMode] = useState(false);
   
-  const [attivoDataN, setAttivoDataN] = useState<BalanceSheetItemData[]>(createEmptyAttivoData());
-  const [passivoDataN, setPassivoDataN] = useState<BalanceSheetItemData[]>(createEmptyPassivoData());
-  
-  const [attivoDataN1, setAttivoDataN1] = useState<BalanceSheetItemData[]>(createEmptyAttivoData());
-  const [passivoDataN1, setPassivoDataN1] = useState<BalanceSheetItemData[]>(createEmptyPassivoData());
+  const [attivoData, setAttivoData] = useState<BalanceSheetItemData[]>(createEmptyAttivoData());
+  const [passivoData, setPassivoData] = useState<BalanceSheetItemData[]>(createEmptyPassivoData());
 
-  const currentAttivoData = selectedYear === "N" ? attivoDataN : attivoDataN1;
-  const currentPassivoData = selectedYear === "N" ? passivoDataN : passivoDataN1;
-  const setCurrentAttivoData = selectedYear === "N" ? setAttivoDataN : setAttivoDataN1;
-  const setCurrentPassivoData = selectedYear === "N" ? setPassivoDataN : setPassivoDataN1;
+  // N / N-1 year values for Attivo main categories
+  const [attivoValuesN, setAttivoValuesN] = useState<Record<string, number>>({});
+  const [attivoValuesN1, setAttivoValuesN1] = useState<Record<string, number>>({});
+
+  // N / N-1 year values for Passivo main categories
+  const [passivoValuesN, setPassivoValuesN] = useState<Record<string, number>>({});
+  const [passivoValuesN1, setPassivoValuesN1] = useState<Record<string, number>>({});
+
+  // Financial structure analysis (lifted from CompanyAnalysisPanel)
+  const [customStructure, setCustomStructure] = useState<FinancialStructure>(
+    () => getDefaultStructure(companyType)
+  );
+
+  // Auto-balance structure percentages to always sum to 100%
+  const handleStructureChange = (newStructure: FinancialStructure) => {
+    // Balance Attivo side (immobilizzazioni + attivoCircolante = 100)
+    const attivoSum = newStructure.immobilizzazioni + newStructure.attivoCircolante;
+    if (attivoSum !== 100) {
+      if (newStructure.immobilizzazioni !== customStructure.immobilizzazioni) {
+        newStructure.attivoCircolante = Math.max(0, Math.min(100, 100 - newStructure.immobilizzazioni));
+      } else {
+        newStructure.immobilizzazioni = Math.max(0, Math.min(100, 100 - newStructure.attivoCircolante));
+      }
+    }
+
+    // Balance Passivo side (patrimonioNetto + debitiMLT + debitiBreve = 100)
+    const passivoKeys: (keyof FinancialStructure)[] = ["patrimonioNetto", "debitiMLT", "debitiBreve"];
+    const passivoSum = newStructure.patrimonioNetto + newStructure.debitiMLT + newStructure.debitiBreve;
+    if (passivoSum !== 100) {
+      const changedKey = passivoKeys.find(k => newStructure[k] !== customStructure[k]);
+      if (changedKey) {
+        const others = passivoKeys.filter(k => k !== changedKey);
+        const remaining = Math.max(0, 100 - newStructure[changedKey]);
+        const othersSum = others.reduce((s, k) => s + customStructure[k], 0);
+        if (othersSum > 0) {
+          others.forEach(k => {
+            newStructure[k] = Math.max(0, Math.round((customStructure[k] / othersSum) * remaining));
+          });
+        } else {
+          others.forEach((k, i) => {
+            newStructure[k] = i === 0 ? remaining : 0;
+          });
+        }
+      }
+    }
+
+    setCustomStructure({ ...newStructure });
+  };
 
   const handleAttivoChange = (id: string, value: number) => {
     const updateValue = (items: BalanceSheetItemData[]): BalanceSheetItemData[] => {
@@ -341,7 +384,7 @@ export default function App() {
         return item;
       });
     };
-    setCurrentAttivoData(updateValue(currentAttivoData));
+    setAttivoData(updateValue(attivoData));
   };
 
   const handlePassivoChange = (id: string, value: number) => {
@@ -356,28 +399,40 @@ export default function App() {
         return item;
       });
     };
-    setCurrentPassivoData(updateValue(currentPassivoData));
+    setPassivoData(updateValue(passivoData));
   };
 
-  const calculateTotal = (items: BalanceSheetItemData[]): number => {
+  /* Sum N values for a section using the same logic as BalanceSheetSection footer:
+     level 0 → use manual override if present, otherwise sum of children */
+  const sumSectionN = (
+    items: BalanceSheetItemData[],
+    values: Record<string, number>
+  ): number => {
     return items.reduce((sum, item) => {
-      if (item.children && item.children.length > 0) {
-        return sum + calculateTotal(item.children);
+      // If manually set at level 0, use it
+      if (item.id in values) return sum + values[item.id];
+      // Otherwise sum children (level 1)
+      if (item.children) {
+        return sum + item.children.reduce((s, c) => s + (values[c.id] ?? 0), 0);
       }
-      return sum + item.value;
+      return sum + (values[item.id] ?? 0);
     }, 0);
   };
 
-  const totalAttivo = calculateTotal(currentAttivoData);
-  const totalPassivo = calculateTotal(currentPassivoData);
+  const totalAttivo = sumSectionN(attivoData, attivoValuesN);
+  const totalPassivo = sumSectionN(passivoData, passivoValuesN);
   const isBalanced = Math.abs(totalAttivo - totalPassivo) < 1;
   const difference = totalAttivo - totalPassivo;
 
+  const [showResetDialog, setShowResetDialog] = useState(false);
+
   const resetAllData = () => {
-    setAttivoDataN(createEmptyAttivoData());
-    setPassivoDataN(createEmptyPassivoData());
-    setAttivoDataN1(createEmptyAttivoData());
-    setPassivoDataN1(createEmptyPassivoData());
+    setAttivoData(createEmptyAttivoData());
+    setPassivoData(createEmptyPassivoData());
+    setAttivoValuesN({});
+    setAttivoValuesN1({});
+    setPassivoValuesN({});
+    setPassivoValuesN1({});
     setExerciseText("");
   };
 
@@ -454,8 +509,8 @@ export default function App() {
         { ...freshPassivoData[3], value: 20000 },
       ];
 
-      setCurrentAttivoData(attivoWithValues);
-      setCurrentPassivoData(passivoWithValues);
+      setAttivoData(attivoWithValues);
+      setPassivoData(passivoWithValues);
     } else {
       // Preset mercantile: higher current assets, lower fixed assets
       const attivoWithValues = [
@@ -524,17 +579,48 @@ export default function App() {
         { ...freshPassivoData[3], value: 15000 },
       ];
 
-      setCurrentAttivoData(attivoWithValues);
-      setCurrentPassivoData(passivoWithValues);
+      setAttivoData(attivoWithValues);
+      setPassivoData(passivoWithValues);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-6">
-      <div className="max-w-[1920px] mx-auto">
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "dark bg-[#0f172a]" : "bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100"}`}>
+      {/* Navbar */}
+      <nav className={`sticky top-0 z-50 w-full border-b backdrop-blur-md transition-colors duration-300 ${
+        darkMode
+          ? "bg-[#1e293b]/90 border-slate-700"
+          : "bg-white/80 border-gray-200"
+      }`}>
+        <div className="max-w-[1920px] mx-auto px-6 h-14 flex items-center justify-end">
+          {/* UIverse Switch by Admin12121 */}
+          <div className="switch-button">
+            <div className="switch-outer">
+              <input
+                type="checkbox"
+                id="dark-toggle"
+                checked={darkMode}
+                onChange={() => setDarkMode(!darkMode)}
+              />
+              <label htmlFor="dark-toggle">
+                <div className="switch-inner">
+                  <Sun className="icon-sun w-3.5 h-3.5 text-amber-600" />
+                  <Moon className="icon-moon w-3.5 h-3.5 text-slate-500" />
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-[1920px] mx-auto p-6">
         {/* Exercise Text Area */}
-        <div className="mb-6 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-          <Label htmlFor="exercise-text" className="text-sm font-semibold text-gray-700 mb-2 block">
+        <div className={`mb-6 rounded-xl shadow-lg p-6 border transition-colors duration-300 ${
+          darkMode
+            ? "bg-[#1e293b] border-slate-700"
+            : "bg-white border-gray-200"
+        }`}>
+          <Label htmlFor="exercise-text" className={`text-sm font-semibold mb-2 block ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
             Testo dell'Esercizio
           </Label>
           <Textarea
@@ -542,7 +628,7 @@ export default function App() {
             placeholder="Inserire qui il testo dell'esercizio, i vincoli, le ipotesi e i dati forniti dal docente..."
             value={exerciseText}
             onChange={(e) => setExerciseText(e.target.value)}
-            className="min-h-[100px] text-sm resize-none"
+            className={`min-h-[100px] text-sm resize-none ${darkMode ? "bg-[#0f172a] border-slate-600 text-slate-200 placeholder:text-slate-500" : ""}`}
           />
         </div>
 
@@ -554,124 +640,146 @@ export default function App() {
           <FormulaCalculator />
         </div>
 
-        {/* Year Selector and Reset Button */}
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Label className="text-sm font-semibold text-gray-700">Anno di riferimento:</Label>
-            <div className="inline-flex rounded-lg border-2 border-gray-300 bg-white p-1">
-              <button
-                onClick={() => setSelectedYear("N")}
-                className={`px-6 py-2 rounded-md font-semibold text-sm transition-all ${
-                  selectedYear === "N"
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Anno N
-              </button>
-              <button
-                onClick={() => setSelectedYear("N-1")}
-                className={`px-6 py-2 rounded-md font-semibold text-sm transition-all ${
-                  selectedYear === "N-1"
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                Anno N-1
-              </button>
-            </div>
-          </div>
-          
+        {/* Reset Button */}
+        <div className="my-6 flex items-center justify-end pr-6">
           <button
-            onClick={resetAllData}
-            className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md"
+            onClick={() => setShowResetDialog(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-white text-sm rounded-md font-medium hover:brightness-90 transition-colors"
+            style={{ backgroundColor: "#D4183D" }}
           >
-            <RotateCcw className="w-5 h-5" />
+            <RotateCcw className="w-4 h-4" />
             Reset Dati
           </button>
         </div>
 
+        {/* Reset Confirmation Dialog */}
+        <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Conferma reset</DialogTitle>
+              <DialogDescription>
+                Sei sicuro di cancellare tutti i dati inseriti? Questa azione non
+                può essere annullata.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowResetDialog(false)}>
+                No, annulla
+              </Button>
+              <Button variant="destructive" onClick={() => { resetAllData(); setShowResetDialog(false); }}>
+                Sì, cancella tutto
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Main Layout */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
-          {/* Balance Sheet */}
-          <div className="grid md:grid-cols-2 gap-6" style={{ height: "calc(100vh - 380px)", minHeight: "700px" }}>
+        <div className="grid grid-cols-1 gap-6">
+          {/* Balance Sheet - full width/height area */}
+          <div className="w-full min-h-screen mx-0 px-0 grid md:grid-cols-2 gap-6">
             <BalanceSheetSection
               title="ATTIVO"
-              items={currentAttivoData}
+              items={attivoData}
               onValueChange={handleAttivoChange}
               themeColor="#2563eb"
+              showYearColumns
+              darkMode={darkMode}
+              valuesN={attivoValuesN}
+              valuesN1={attivoValuesN1}
+              onChangeN={(id, v) => setAttivoValuesN((prev) => ({ ...prev, [id]: v }))}
+              onChangeN1={(id, v) => setAttivoValuesN1((prev) => ({ ...prev, [id]: v }))}
+              structureBar={[
+                { id: "immobilizzazioni", percent: customStructure.immobilizzazioni, color: "#2B7FFF" },
+                { id: "attivo-circolante", percent: customStructure.attivoCircolante, color: "#1A56DB" },
+              ]}
             />
             <BalanceSheetSection
               title="PASSIVO E PATRIMONIO NETTO"
-              items={currentPassivoData}
+              items={passivoData}
               onValueChange={handlePassivoChange}
               themeColor="#7c3aed"
+              showYearColumns
+              darkMode={darkMode}
+              valuesN={passivoValuesN}
+              valuesN1={passivoValuesN1}
+              onChangeN={(id, v) => setPassivoValuesN((prev) => ({ ...prev, [id]: v }))}
+              onChangeN1={(id, v) => setPassivoValuesN1((prev) => ({ ...prev, [id]: v }))}
+              structureBar={[
+                { id: "patrimonio-netto", percent: customStructure.patrimonioNetto, color: "#6EE7B7" },
+                { id: "fondi-debiti-mlt", percent: customStructure.debitiMLT, color: "#34D399" },
+                { id: "debiti-breve", percent: customStructure.debitiBreve, color: "#10B981" },
+              ]}
             />
           </div>
 
-          {/* Analysis Panel */}
+          {/* Balance Check */}
           <div>
-            <CompanyAnalysisPanel
-              companyType={companyType}
-              onCompanyTypeChange={setCompanyType}
-              onApplyPreset={applyPreset}
-            />
+            <div
+              className={`rounded-xl shadow-lg p-6 border-2 transition-all ${
+                isBalanced
+                  ? darkMode ? "bg-green-900/30 border-green-600" : "bg-green-50 border-green-500"
+                  : darkMode ? "bg-red-900/30 border-red-600" : "bg-red-50 border-red-500"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {isBalanced ? (
+                    <CheckCircle2 className="w-8 h-8 text-green-600" />
+                  ) : (
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  )}
+                  <div>
+                    <h3 className={`text-lg font-bold ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
+                      Verifica di Quadratura
+                    </h3>
+                    <p className={`text-sm ${darkMode ? "text-slate-400" : "text-gray-600"}`}>
+                      {isBalanced
+                        ? "Il bilancio è correttamente bilanciato"
+                        : "Il bilancio presenta uno sbilancio"}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-8 text-center">
+                  <div>
+                    <div className={`text-xs mb-1 ${darkMode ? "text-slate-400" : "text-gray-600"}`}>Totale Attivo</div>
+                    <div className="text-xl font-bold text-blue-600">
+                      €{totalAttivo.toLocaleString("it-IT")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={`text-xs mb-1 ${darkMode ? "text-slate-400" : "text-gray-600"}`}>Totale Passivo</div>
+                    <div className="text-xl font-bold text-purple-600">
+                      €{totalPassivo.toLocaleString("it-IT")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={`text-xs mb-1 ${darkMode ? "text-slate-400" : "text-gray-600"}`}>Differenza</div>
+                    <div
+                      className={`text-xl font-bold ${
+                        isBalanced ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      {isBalanced
+                        ? "✓ Bilanciato"
+                        : `€${Math.abs(difference).toLocaleString("it-IT")}`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Balance Check */}
-        <div className="mt-6">
-          <div
-            className={`rounded-xl shadow-lg p-6 border-2 transition-all ${
-              isBalanced
-                ? "bg-green-50 border-green-500"
-                : "bg-red-50 border-red-500"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {isBalanced ? (
-                  <CheckCircle2 className="w-8 h-8 text-green-600" />
-                ) : (
-                  <AlertCircle className="w-8 h-8 text-red-600" />
-                )}
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Verifica di Quadratura - Anno {selectedYear}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {isBalanced
-                      ? "Il bilancio è correttamente bilanciato"
-                      : "Il bilancio presenta uno sbilancio"}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-8 text-center">
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Totale Attivo</div>
-                  <div className="text-xl font-bold text-blue-600">
-                    €{totalAttivo.toLocaleString("it-IT")}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Totale Passivo</div>
-                  <div className="text-xl font-bold text-purple-600">
-                    €{totalPassivo.toLocaleString("it-IT")}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Differenza</div>
-                  <div
-                    className={`text-xl font-bold ${
-                      isBalanced ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {isBalanced
-                      ? "✓ Bilanciato"
-                      : `€${Math.abs(difference).toLocaleString("it-IT")}`}
-                  </div>
-                </div>
-              </div>
+          {/* Analysis Panel - right-aligned, compact */}
+          <div className="flex justify-end">
+            <div className="w-full md:w-1/2 lg:w-2/5 xl:w-1/3">
+              <CompanyAnalysisPanel
+                companyType={companyType}
+                onCompanyTypeChange={setCompanyType}
+                onApplyPreset={applyPreset}
+                customStructure={customStructure}
+                onStructureChange={handleStructureChange}
+                darkMode={darkMode}
+              />
             </div>
           </div>
         </div>
