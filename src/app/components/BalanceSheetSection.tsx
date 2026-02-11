@@ -26,6 +26,11 @@ interface BalanceSheetSectionProps {
   structureBar?: { id: string; percent: number; color: string }[];
   /** Dark mode */
   darkMode?: boolean;
+  /** Manual override for footer total N (used when total is known before categories) */
+  totalOverrideN?: number;
+  totalOverrideN1?: number;
+  onTotalChangeN?: (value: number) => void;
+  onTotalChangeN1?: (value: number) => void;
 }
 
 export function BalanceSheetSection({
@@ -40,6 +45,10 @@ export function BalanceSheetSection({
   onChangeN1,
   structureBar,
   darkMode = false,
+  totalOverrideN = 0,
+  totalOverrideN1 = 0,
+  onTotalChangeN,
+  onTotalChangeN1,
 }: BalanceSheetSectionProps) {
   /* Collect level 0 IDs so only main categories start expanded */
   const collectExpandableIds = (list: BalanceSheetItemData[]): string[] => {
@@ -121,8 +130,11 @@ export function BalanceSheetSection({
 
   const visibleRows = flattenVisible(items);
   const total = calculateTotal(items);
-  const totalN = items.reduce((s, item) => s + getLevel0Value(item, valuesN), 0);
-  const totalN1 = items.reduce((s, item) => s + getLevel0Value(item, valuesN1), 0);
+  const autoSumN = items.reduce((s, item) => s + getLevel0Value(item, valuesN), 0);
+  const autoSumN1 = items.reduce((s, item) => s + getLevel0Value(item, valuesN1), 0);
+  // Show auto-sum when categories have values, otherwise show manual override
+  const totalN = autoSumN > 0 ? autoSumN : totalOverrideN;
+  const totalN1 = autoSumN1 > 0 ? autoSumN1 : totalOverrideN1;
 
   const hasBar = structureBar && structureBar.length > 0;
 
@@ -140,23 +152,23 @@ export function BalanceSheetSection({
           {/* Column widths */}
           <colgroup>
             <col className="w-auto" />
-            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[617px]:w-[80px] max-[617px]:min-w-[60px]" />}
-            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[617px]:w-[80px] max-[617px]:min-w-[60px]" />}
+            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[1000px]:w-[80px] max-[1000px]:min-w-[60px]" />}
+            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[1000px]:w-[80px] max-[1000px]:min-w-[60px]" />}
           </colgroup>
 
           {/* ---- Header ---- */}
           <thead className="sticky top-0 z-10">
             <tr style={{ borderBottom: `4px solid ${themeColor}` }} className={darkMode ? "bg-[#1e293b]" : "bg-white"}>
-              <th className={`px-6 max-[617px]:px-3 py-4 max-[617px]:py-2 text-left text-2xl max-[617px]:text-base font-bold ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
+              <th className={`px-6 max-[1000px]:px-3 py-4 max-[1000px]:py-2 text-left text-2xl max-[1000px]:text-base font-bold ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
                 {title}
               </th>
               {showYearColumns && (
-                <th className={`px-3 max-[617px]:px-1 py-4 max-[617px]:py-2 text-center text-xs max-[617px]:text-[10px] font-semibold border-l ${darkMode ? "text-slate-400 border-slate-600" : "text-gray-500 border-gray-300"}`}>
+                <th className={`px-3 max-[1000px]:px-1 py-4 max-[1000px]:py-2 text-center text-xs max-[1000px]:text-[10px] font-semibold border-l ${darkMode ? "text-slate-400 border-slate-600" : "text-gray-500 border-gray-300"}`}>
                   N
                 </th>
               )}
               {showYearColumns && (
-                <th className={`px-3 max-[617px]:px-1 py-4 max-[617px]:py-2 text-center text-xs max-[617px]:text-[10px] font-semibold border-l ${darkMode ? "text-slate-400 border-slate-600" : "text-gray-500 border-gray-300"}`}>
+                <th className={`px-3 max-[1000px]:px-1 py-4 max-[1000px]:py-2 text-center text-xs max-[1000px]:text-[10px] font-semibold border-l ${darkMode ? "text-slate-400 border-slate-600" : "text-gray-500 border-gray-300"}`}>
                   N-1
                 </th>
               )}
@@ -175,7 +187,7 @@ export function BalanceSheetSection({
               const paddingLeftMobile = depth * 12 + 8;
 
               const fontSize =
-                item.level === 0 ? "text-base max-[617px]:text-xs" : "text-sm max-[617px]:text-[11px]";
+                item.level === 0 ? "text-base max-[1000px]:text-xs" : "text-sm max-[1000px]:text-[11px]";
               const fontWeight =
                 item.level === 0
                   ? "font-bold"
@@ -198,7 +210,7 @@ export function BalanceSheetSection({
                 >
                   {/* Label cell */}
                   <td
-                    className="py-3 max-[617px]:py-1.5 pr-2 max-[617px]:pr-1"
+                    className="py-3 max-[1000px]:py-1.5 pr-2 max-[1000px]:pr-1"
                     style={{ paddingLeft: `${paddingLeft}px` }}
                   >
                     <div
@@ -219,8 +231,8 @@ export function BalanceSheetSection({
                       <span className={`${fontSize} ${fontWeight} ${darkMode ? "text-slate-200" : "text-gray-800"}`}>
                         {shortLabels[item.id] ? (
                           <>
-                            <span className="max-[617px]:hidden">{item.label}</span>
-                            <span className="hidden max-[617px]:inline">{shortLabels[item.id]}</span>
+                            <span className="max-[1000px]:hidden">{item.label}</span>
+                            <span className="hidden max-[1000px]:inline">{shortLabels[item.id]}</span>
                           </>
                         ) : (
                           item.label
@@ -231,7 +243,7 @@ export function BalanceSheetSection({
 
                   {/* N cell */}
                   {showYearColumns && (
-                    <td className={`py-3 max-[617px]:py-1.5 px-3 max-[617px]:px-1 text-center border-l ${darkMode ? "border-slate-700" : "border-gray-200"}`}>
+                    <td className={`py-3 max-[1000px]:py-1.5 px-3 max-[1000px]:px-1 text-center border-l ${darkMode ? "border-slate-700" : "border-gray-200"}`}>
                       {item.level === 0 && (
                         <EditableValue
                           value={getLevel0Value(item, valuesN)}
@@ -255,7 +267,7 @@ export function BalanceSheetSection({
 
                   {/* N-1 cell */}
                   {showYearColumns && (
-                    <td className={`py-3 max-[617px]:py-1.5 px-3 max-[617px]:px-1 text-center border-l ${darkMode ? "border-slate-700" : "border-gray-200"}`}>
+                    <td className={`py-3 max-[1000px]:py-1.5 px-3 max-[1000px]:px-1 text-center border-l ${darkMode ? "border-slate-700" : "border-gray-200"}`}>
                       {item.level === 0 && (
                         <EditableValue
                           value={getLevel0Value(item, valuesN1)}
@@ -288,23 +300,35 @@ export function BalanceSheetSection({
         <table className="w-full border-collapse table-fixed">
           <colgroup>
             <col className="w-auto" />
-            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[617px]:w-[80px] max-[617px]:min-w-[60px]" />}
-            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[617px]:w-[80px] max-[617px]:min-w-[60px]" />}
+            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[1000px]:w-[80px] max-[1000px]:min-w-[60px]" />}
+            {showYearColumns && <col className="w-[130px] min-w-[100px] max-[1000px]:w-[80px] max-[1000px]:min-w-[60px]" />}
           </colgroup>
           <tbody>
             <tr>
-              <td className="px-6 max-[617px]:px-3 py-4 max-[617px]:py-2 text-lg max-[617px]:text-xs font-bold">
-                <span className="max-[617px]:hidden">TOTALE {title.toUpperCase()}</span>
-                <span className="hidden max-[617px]:inline">TOTALE {(shortTitle[title] ?? title).toUpperCase()}</span>
+              <td className="px-6 max-[1000px]:px-3 py-4 max-[1000px]:py-2 text-lg max-[1000px]:text-xs font-bold">
+                <span className="max-[1000px]:hidden">TOTALE {title.toUpperCase()}</span>
+                <span className="hidden max-[1000px]:inline">TOTALE {(shortTitle[title] ?? title).toUpperCase()}</span>
               </td>
               {showYearColumns && (
-                <td className="px-3 max-[617px]:px-1 py-4 max-[617px]:py-2 text-center text-lg max-[617px]:text-xs font-bold border-l border-gray-700">
-                  €{totalN.toLocaleString("it-IT")}
+                <td className="px-3 max-[1000px]:px-1 py-4 max-[1000px]:py-2 text-center border-l border-gray-700">
+                  <EditableValue
+                    value={totalN}
+                    onChange={(v) => onTotalChangeN?.(v)}
+                    readOnly={false}
+                    level={-1}
+                    darkMode={true}
+                  />
                 </td>
               )}
               {showYearColumns && (
-                <td className="px-3 max-[617px]:px-1 py-4 max-[617px]:py-2 text-center text-lg max-[617px]:text-xs font-bold border-l border-gray-700">
-                  €{totalN1.toLocaleString("it-IT")}
+                <td className="px-3 max-[1000px]:px-1 py-4 max-[1000px]:py-2 text-center border-l border-gray-700">
+                  <EditableValue
+                    value={totalN1}
+                    onChange={(v) => onTotalChangeN1?.(v)}
+                    readOnly={false}
+                    level={-1}
+                    darkMode={true}
+                  />
                 </td>
               )}
             </tr>
@@ -346,9 +370,9 @@ function EditableValue({ value, onChange, readOnly, level, darkMode = false }: E
   const [isEditing, setIsEditing] = useState(false);
   const [rawInput, setRawInput] = useState("");
 
-  const fontSize = level === 0 ? "text-base max-[617px]:text-xs" : "text-sm max-[617px]:text-[11px]";
+  const fontSize = level === -1 ? "text-lg max-[1000px]:text-xs" : level === 0 ? "text-base max-[1000px]:text-xs" : "text-sm max-[1000px]:text-[11px]";
   const fontWeight =
-    level === 0 ? "font-bold" : level === 1 ? "font-semibold" : "font-medium";
+    level <= 0 ? "font-bold" : level === 1 ? "font-semibold" : "font-medium";
 
   const formatWithDots = (n: number): string => {
     if (n === 0) return "0";
@@ -396,7 +420,7 @@ function EditableValue({ value, onChange, readOnly, level, darkMode = false }: E
         onChange={handleChange}
         onBlur={handleBlur}
         autoFocus
-        className={`h-8 max-[617px]:h-6 w-full text-sm max-[617px]:text-xs text-center ${darkMode ? "bg-slate-800 border-slate-600 text-slate-100" : ""}`}
+        className={`h-8 max-[1000px]:h-6 w-full text-sm max-[1000px]:text-xs text-center ${darkMode ? "bg-slate-800 border-slate-600 text-slate-100" : ""}`}
       />
     );
   }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BalanceSheetSection } from "./components/BalanceSheetSection";
 import { CompanyAnalysisPanel, getDefaultStructure, type FinancialStructure } from "./components/CompanyAnalysisPanel";
 import ExerciseAnalyzer from "./components/ExerciseAnalyzer";
@@ -8,6 +8,7 @@ import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./components/ui/dialog";
 import { Button } from "./components/ui/button";
+import { Input } from "./components/ui/input";
 
 interface BalanceSheetItemData {
   id: string;
@@ -316,6 +317,49 @@ const createEmptyPassivoData = (): BalanceSheetItemData[] => [
 ];
 
 export default function App() {
+  // ─── Loading screen state ───
+  type LoadingPhase = "loading" | "login" | "brand" | "shrink" | "done";
+  const [phase, setPhase] = useState<LoadingPhase>(() => {
+    // Skip loading if user already logged in this session
+    const stored = localStorage.getItem("hrdn_user");
+    return stored ? "done" : "loading";
+  });
+  const [userName, setUserName] = useState(() => {
+    const stored = localStorage.getItem("hrdn_user");
+    return stored ? JSON.parse(stored) : { nome: "", cognome: "" };
+  });
+  const [loginNome, setLoginNome] = useState("");
+  const [loginCognome, setLoginCognome] = useState("");
+  const brandRef = useRef<HTMLSpanElement>(null);
+  const navBrandRef = useRef<HTMLSpanElement>(null);
+
+  // Phase transitions
+  useEffect(() => {
+    if (phase === "loading") {
+      const t = setTimeout(() => setPhase("login"), 4000);
+      return () => clearTimeout(t);
+    }
+    if (phase === "brand") {
+      const t = setTimeout(() => setPhase("shrink"), 3000);
+      return () => clearTimeout(t);
+    }
+    if (phase === "shrink") {
+      const t = setTimeout(() => setPhase("done"), 800);
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
+
+  const handleLogin = () => {
+    if (!loginNome.trim() || !loginCognome.trim()) return;
+    const user = { nome: loginNome.trim(), cognome: loginCognome.trim() };
+    localStorage.setItem("hrdn_user", JSON.stringify(user));
+    setUserName(user);
+    setPhase("brand");
+  };
+
+  const showLoadingScreen = phase !== "done";
+
+  // ─── App state ───
   const [companyType, setCompanyType] = useState<"industrial" | "mercantile">("industrial");
   const [exerciseText, setExerciseText] = useState("");
   const [darkMode, setDarkMode] = useState(false);
@@ -330,6 +374,12 @@ export default function App() {
   // N / N-1 year values for Passivo main categories
   const [passivoValuesN, setPassivoValuesN] = useState<Record<string, number>>({});
   const [passivoValuesN1, setPassivoValuesN1] = useState<Record<string, number>>({});
+
+  // Manual total overrides (used when total is known before categories)
+  const [attivoTotalOverrideN, setAttivoTotalOverrideN] = useState(0);
+  const [attivoTotalOverrideN1, setAttivoTotalOverrideN1] = useState(0);
+  const [passivoTotalOverrideN, setPassivoTotalOverrideN] = useState(0);
+  const [passivoTotalOverrideN1, setPassivoTotalOverrideN1] = useState(0);
 
   // Financial structure analysis (lifted from CompanyAnalysisPanel)
   const [customStructure, setCustomStructure] = useState<FinancialStructure>(
@@ -419,8 +469,10 @@ export default function App() {
     }, 0);
   };
 
-  const totalAttivo = sumSectionN(attivoData, attivoValuesN);
-  const totalPassivo = sumSectionN(passivoData, passivoValuesN);
+  const autoSumAttivoN = sumSectionN(attivoData, attivoValuesN);
+  const autoSumPassivoN = sumSectionN(passivoData, passivoValuesN);
+  const totalAttivo = autoSumAttivoN > 0 ? autoSumAttivoN : attivoTotalOverrideN;
+  const totalPassivo = autoSumPassivoN > 0 ? autoSumPassivoN : passivoTotalOverrideN;
   const isBalanced = Math.abs(totalAttivo - totalPassivo) < 1;
   const difference = totalAttivo - totalPassivo;
 
@@ -433,6 +485,10 @@ export default function App() {
     setAttivoValuesN1({});
     setPassivoValuesN({});
     setPassivoValuesN1({});
+    setAttivoTotalOverrideN(0);
+    setAttivoTotalOverrideN1(0);
+    setPassivoTotalOverrideN(0);
+    setPassivoTotalOverrideN1(0);
     setExerciseText("");
   };
 
@@ -585,6 +641,84 @@ export default function App() {
   };
 
   return (
+    <>
+    {/* ─── Loading Screen Overlay ─── */}
+    {showLoadingScreen && (
+      <div
+        className={`fixed inset-0 z-[100] bg-[#0f0f0f] flex items-center justify-center transition-opacity duration-700 ${
+          phase === "shrink" ? "animate-fade-out" : ""
+        }`}
+      >
+        {/* Phase 1: Loader */}
+        {phase === "loading" && (
+          <div className="loader">
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+          </div>
+        )}
+
+        {/* Phase 2: Login popup */}
+        {phase === "login" && (
+          <div className="animate-fade-in bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-8 max-[617px]:p-5 shadow-2xl w-[380px] max-[617px]:w-[300px] text-center">
+            <h2 className="text-white text-xl max-[617px]:text-lg font-semibold mb-1 font-[Poppins,sans-serif]">Benvenuto</h2>
+            <p className="text-gray-400 text-sm mb-6 max-[617px]:mb-4">Inserisci i tuoi dati per accedere</p>
+            <div className="space-y-3 mb-6 max-[617px]:mb-4">
+              <Input
+                type="text"
+                placeholder="Nome"
+                value={loginNome}
+                onChange={(e) => setLoginNome(e.target.value)}
+                className="bg-[#252540] border-[#3a3a50] text-white placeholder:text-gray-500 h-11 rounded-lg"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              />
+              <Input
+                type="text"
+                placeholder="Cognome"
+                value={loginCognome}
+                onChange={(e) => setLoginCognome(e.target.value)}
+                className="bg-[#252540] border-[#3a3a50] text-white placeholder:text-gray-500 h-11 rounded-lg"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              />
+            </div>
+            <button
+              onClick={handleLogin}
+              disabled={!loginNome.trim() || !loginCognome.trim()}
+              className="w-full py-2.5 bg-white text-[#0f0f0f] rounded-lg font-semibold text-sm hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Accedi
+            </button>
+          </div>
+        )}
+
+        {/* Phase 3: Brand reveal */}
+        {phase === "brand" && (
+          <div className="animate-fade-in">
+            <span ref={brandRef} className="btn-shine-hero">
+              hrdn design
+            </span>
+          </div>
+        )}
+
+        {/* Phase 4: Shrink — brand text shrinks toward navbar */}
+        {phase === "shrink" && (
+          <span
+            className="btn-shine-hero"
+            style={{
+              position: "fixed",
+              top: "16px",
+              left: "24px",
+              fontSize: "19px",
+              padding: "12px 48px",
+              zIndex: 200,
+            }}
+          >
+            hrdn design
+          </span>
+        )}
+      </div>
+    )}
+
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "dark bg-[#0f172a]" : "bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100"}`}>
       {/* Navbar */}
       <nav className={`sticky top-0 z-50 w-full border-b backdrop-blur-md transition-colors duration-300 ${
@@ -592,22 +726,34 @@ export default function App() {
           ? "bg-[#1e293b]/90 border-slate-700"
           : "bg-white/80 border-gray-200"
       }`}>
-        <div className="max-w-[1920px] mx-auto px-6 max-[617px]:px-3 h-14 max-[617px]:h-11 flex items-center justify-end">
-          {/* UIverse Switch by Admin12121 */}
-          <div className="switch-button">
-            <div className="switch-outer">
-              <input
-                type="checkbox"
-                id="dark-toggle"
-                checked={darkMode}
-                onChange={() => setDarkMode(!darkMode)}
-              />
-              <label htmlFor="dark-toggle">
-                <div className="switch-inner">
-                  <Sun className="icon-sun w-3.5 h-3.5 text-amber-600" />
-                  <Moon className="icon-moon w-3.5 h-3.5 text-slate-500" />
-                </div>
-              </label>
+        <div className="max-w-[1920px] mx-auto px-6 max-[617px]:px-3 h-14 max-[617px]:h-12 flex items-center justify-between">
+          {/* Shine brand text — UIverse by neerajbaniwal */}
+          <span className="btn-shine">hrdn design</span>
+          <div className="flex items-center gap-3 max-[617px]:gap-2">
+            {/* User Profile Button — UIverse by reglobby */}
+            <button className="user-profile">
+              <div className="user-profile-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="w-5 h-5 max-[617px]:w-4 max-[617px]:h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                </svg>
+              </div>
+            </button>
+            {/* UIverse Switch by Admin12121 */}
+            <div className="switch-button">
+              <div className="switch-outer">
+                <input
+                  type="checkbox"
+                  id="dark-toggle"
+                  checked={darkMode}
+                  onChange={() => setDarkMode(!darkMode)}
+                />
+                <label htmlFor="dark-toggle">
+                  <div className="switch-inner">
+                    <Sun className="icon-sun w-3.5 h-3.5 text-amber-600" />
+                    <Moon className="icon-moon w-3.5 h-3.5 text-slate-500" />
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -615,7 +761,7 @@ export default function App() {
 
       <div className="max-w-[1920px] mx-auto p-6 max-[617px]:p-3">
         {/* Exercise Text Area */}
-        <div className={`mb-6 max-[617px]:mb-3 rounded-xl shadow-lg p-6 max-[617px]:p-3 border transition-colors duration-300 ${
+        <div className={`mb-6 max-[617px]:mb-4 rounded-xl shadow-lg p-6 max-[617px]:p-3 border transition-colors duration-300 ${
           darkMode
             ? "bg-[#1e293b] border-slate-700"
             : "bg-white border-gray-200"
@@ -636,7 +782,7 @@ export default function App() {
         <ExerciseAnalyzer exerciseText={exerciseText} />
 
         {/* Formula Calculator */}
-        <div className="mt-6 max-[617px]:mt-3">
+        <div className="mt-6 max-[617px]:mt-4">
           <FormulaCalculator />
         </div>
 
@@ -674,9 +820,9 @@ export default function App() {
         </Dialog>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 gap-6 max-[617px]:gap-3">
+        <div className="grid grid-cols-1 gap-6 max-[617px]:gap-4">
           {/* Balance Sheet - full width/height area */}
-          <div className="w-full min-h-screen mx-0 px-0 grid md:grid-cols-2 gap-6 max-[617px]:gap-3">
+          <div className="w-full min-h-screen mx-0 px-0 grid md:grid-cols-2 gap-6 max-[617px]:gap-4">
             <BalanceSheetSection
               title="ATTIVO"
               items={attivoData}
@@ -692,6 +838,10 @@ export default function App() {
                 { id: "immobilizzazioni", percent: customStructure.immobilizzazioni, color: "#2B7FFF" },
                 { id: "attivo-circolante", percent: customStructure.attivoCircolante, color: "#1A56DB" },
               ]}
+              totalOverrideN={attivoTotalOverrideN}
+              totalOverrideN1={attivoTotalOverrideN1}
+              onTotalChangeN={setAttivoTotalOverrideN}
+              onTotalChangeN1={setAttivoTotalOverrideN1}
             />
             <BalanceSheetSection
               title="PASSIVO E PATRIMONIO NETTO"
@@ -709,6 +859,10 @@ export default function App() {
                 { id: "fondi-debiti-mlt", percent: customStructure.debitiMLT, color: "#34D399" },
                 { id: "debiti-breve", percent: customStructure.debitiBreve, color: "#6EE7B7" },
               ]}
+              totalOverrideN={passivoTotalOverrideN}
+              totalOverrideN1={passivoTotalOverrideN1}
+              onTotalChangeN={setPassivoTotalOverrideN}
+              onTotalChangeN1={setPassivoTotalOverrideN1}
             />
           </div>
 
@@ -731,6 +885,7 @@ export default function App() {
                   <div>
                     <h3 className={`text-lg max-[617px]:text-sm font-bold ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
                       Verifica di Quadratura
+                      <span className={`ml-2 text-sm max-[617px]:text-xs font-normal ${darkMode ? "text-slate-400" : "text-gray-500"}`}>— Anno Corrente</span>
                     </h3>
                     <p className={`text-sm max-[617px]:text-xs ${darkMode ? "text-slate-400" : "text-gray-600"}`}>
                       {isBalanced
@@ -785,5 +940,6 @@ export default function App() {
         </div>
       </div>
     </div>
+    </>
   );
 }
