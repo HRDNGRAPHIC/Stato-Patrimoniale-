@@ -88,20 +88,20 @@ export function CompanyAnalysisPanel({
   };
 
   return (
-    <div className={`rounded-xl shadow-lg p-6 border transition-colors duration-300 ${darkMode ? "bg-[#1e293b] border-slate-700" : "bg-white border-gray-200"}`}>
-      <h3 className={`text-xl font-bold mb-6 ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
+    <div className={`rounded-xl shadow-lg p-6 max-[617px]:p-3 border transition-colors duration-300 ${darkMode ? "bg-[#1e293b] border-slate-700" : "bg-white border-gray-200"}`}>
+      <h3 className={`text-xl max-[617px]:text-base font-bold mb-6 max-[617px]:mb-3 ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
         Analisi della Struttura Finanziaria
       </h3>
 
       {/* Company Type Selector */}
-      <div className="mb-6">
-        <Label className={`text-sm font-semibold mb-3 block ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
+      <div className="mb-6 max-[617px]:mb-3">
+        <Label className={`text-sm max-[617px]:text-xs font-semibold mb-3 max-[617px]:mb-2 block ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
           Tipologia di Azienda
         </Label>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => onCompanyTypeChange("industrial")}
-            className={`px-4 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-4 max-[617px]:px-2 py-3 max-[617px]:py-2 rounded-lg font-semibold max-[617px]:text-sm transition-all ${
               companyType === "industrial"
                 ? "bg-blue-600 text-white shadow-md"
                 : darkMode ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -111,7 +111,7 @@ export function CompanyAnalysisPanel({
           </button>
           <button
             onClick={() => onCompanyTypeChange("mercantile")}
-            className={`px-4 py-3 rounded-lg font-semibold transition-all ${
+            className={`px-4 max-[617px]:px-2 py-3 max-[617px]:py-2 rounded-lg font-semibold max-[617px]:text-sm transition-all ${
               companyType === "mercantile"
                 ? "bg-green-600 text-white shadow-md"
                 : darkMode ? "bg-slate-700 text-slate-300 hover:bg-slate-600" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -125,13 +125,13 @@ export function CompanyAnalysisPanel({
       {/* Apply Preset Button */}
       <button
         onClick={() => onApplyPreset(companyType)}
-        className="w-full mb-6 px-4 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md"
+        className="w-full mb-6 max-[617px]:mb-3 px-4 max-[617px]:px-2 py-3 max-[617px]:py-2 bg-indigo-600 text-white rounded-lg font-semibold max-[617px]:text-sm hover:bg-indigo-700 transition-colors shadow-md"
       >
         Applica Struttura Tipica {companyType === "industrial" ? "Industriale" : "Mercantile"}
       </button>
 
       {/* Benchmark Visualization */}
-      <div className="space-y-6">
+      <div className="space-y-6 max-[617px]:space-y-3">
         {/* Assets Structure */}
         <div>
           <h4 className={`text-sm font-bold mb-3 pb-2 border-b-2 border-blue-500 ${darkMode ? "text-slate-200" : "text-gray-800"}`}>
@@ -173,7 +173,7 @@ export function CompanyAnalysisPanel({
               label="Patrimonio Netto"
               value={customStructure.patrimonioNetto}
               benchmark={benchmark.patrimonioNetto}
-              color={companyType === "industrial" ? "bg-indigo-600" : "bg-emerald-600"}
+              color="bg-[#059669]"
               onChange={(v) => handleValueChange("patrimonioNetto", v)}
               equilibrium={getEquilibriumStatus(
                 customStructure.patrimonioNetto,
@@ -184,7 +184,7 @@ export function CompanyAnalysisPanel({
               label="Debiti M/L Termine"
               value={customStructure.debitiMLT}
               benchmark={benchmark.debitiMLT}
-              color={companyType === "industrial" ? "bg-indigo-400" : "bg-emerald-400"}
+              color="bg-[#34D399]"
               onChange={(v) => handleValueChange("debitiMLT", v)}
               equilibrium={getEquilibriumStatus(
                 customStructure.debitiMLT,
@@ -195,7 +195,7 @@ export function CompanyAnalysisPanel({
               label="Debiti Breve Termine"
               value={customStructure.debitiBreve}
               benchmark={benchmark.debitiBreve}
-              color={companyType === "industrial" ? "bg-indigo-300" : "bg-emerald-300"}
+              color="bg-[#6EE7B7]"
               onChange={(v) => handleValueChange("debitiBreve", v)}
               equilibrium={getEquilibriumStatus(
                 customStructure.debitiBreve,
@@ -207,7 +207,7 @@ export function CompanyAnalysisPanel({
       </div>
 
       {/* Educational Notes */}
-      <div className={`mt-6 pt-4 border-t ${darkMode ? "border-slate-700" : "border-gray-200"}`}>
+      <div className={`mt-6 max-[617px]:mt-3 pt-4 max-[617px]:pt-2 border-t ${darkMode ? "border-slate-700" : "border-gray-200"}`}>
         <h5 className={`text-xs font-semibold mb-2 ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
           Nota Didattica
         </h5>
@@ -275,12 +275,12 @@ function BenchmarkBar({
   }, []);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-[617px]:space-y-1">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Label className="text-xs font-medium text-gray-700">{label}</Label>
+        <div className="flex items-center gap-2 max-[617px]:gap-1">
+          <Label className="text-xs max-[617px]:text-[10px] font-medium text-gray-700">{label}</Label>
           <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded ${equilibrium.bg} ${equilibrium.color}`}
+            className={`text-xs max-[617px]:text-[10px] font-semibold px-2 max-[617px]:px-1 py-0.5 rounded ${equilibrium.bg} ${equilibrium.color}`}
           >
             {equilibrium.status}
           </span>
@@ -309,7 +309,7 @@ function BenchmarkBar({
       {/* Benchmark range visualization — draggable */}
       <div
         ref={barRef}
-        className="relative h-10 bg-gray-200 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none"
+        className="relative h-10 max-[617px]:h-7 bg-gray-200 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -347,7 +347,7 @@ function BenchmarkBar({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs max-[617px]:text-[10px] text-gray-500">
         <span>Min: {benchmark.min}%</span>
         <span className="font-semibold text-gray-700">
           Ottimale: {benchmark.optimal}%

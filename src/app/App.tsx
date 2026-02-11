@@ -592,7 +592,7 @@ export default function App() {
           ? "bg-[#1e293b]/90 border-slate-700"
           : "bg-white/80 border-gray-200"
       }`}>
-        <div className="max-w-[1920px] mx-auto px-6 h-14 flex items-center justify-end">
+        <div className="max-w-[1920px] mx-auto px-6 max-[617px]:px-3 h-14 max-[617px]:h-11 flex items-center justify-end">
           {/* UIverse Switch by Admin12121 */}
           <div className="switch-button">
             <div className="switch-outer">
@@ -613,9 +613,9 @@ export default function App() {
         </div>
       </nav>
 
-      <div className="max-w-[1920px] mx-auto p-6">
+      <div className="max-w-[1920px] mx-auto p-6 max-[617px]:p-3">
         {/* Exercise Text Area */}
-        <div className={`mb-6 rounded-xl shadow-lg p-6 border transition-colors duration-300 ${
+        <div className={`mb-6 max-[617px]:mb-3 rounded-xl shadow-lg p-6 max-[617px]:p-3 border transition-colors duration-300 ${
           darkMode
             ? "bg-[#1e293b] border-slate-700"
             : "bg-white border-gray-200"
@@ -628,7 +628,7 @@ export default function App() {
             placeholder="Inserire qui il testo dell'esercizio, i vincoli, le ipotesi e i dati forniti dal docente..."
             value={exerciseText}
             onChange={(e) => setExerciseText(e.target.value)}
-            className={`min-h-[100px] text-sm resize-none ${darkMode ? "bg-[#0f172a] border-slate-600 text-slate-200 placeholder:text-slate-500" : ""}`}
+            className={`min-h-[100px] max-[617px]:min-h-[70px] text-sm max-[617px]:text-xs resize-none ${darkMode ? "bg-[#0f172a] border-slate-600 text-slate-200 placeholder:text-slate-500" : ""}`}
           />
         </div>
 
@@ -636,12 +636,12 @@ export default function App() {
         <ExerciseAnalyzer exerciseText={exerciseText} />
 
         {/* Formula Calculator */}
-        <div className="mt-6">
+        <div className="mt-6 max-[617px]:mt-3">
           <FormulaCalculator />
         </div>
 
         {/* Reset Button */}
-        <div className="my-6 flex items-center justify-end pr-6">
+        <div className="my-6 max-[617px]:my-3 flex items-center justify-end pr-6 max-[617px]:pr-3">
           <button
             onClick={() => setShowResetDialog(true)}
             className="flex items-center gap-2 px-3 py-1.5 text-white text-sm rounded-md font-medium hover:brightness-90 transition-colors"
@@ -674,9 +674,9 @@ export default function App() {
         </Dialog>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-6 max-[617px]:gap-3">
           {/* Balance Sheet - full width/height area */}
-          <div className="w-full min-h-screen mx-0 px-0 grid md:grid-cols-2 gap-6">
+          <div className="w-full min-h-screen mx-0 px-0 grid md:grid-cols-2 gap-6 max-[617px]:gap-3">
             <BalanceSheetSection
               title="ATTIVO"
               items={attivoData}
@@ -705,9 +705,9 @@ export default function App() {
               onChangeN={(id, v) => setPassivoValuesN((prev) => ({ ...prev, [id]: v }))}
               onChangeN1={(id, v) => setPassivoValuesN1((prev) => ({ ...prev, [id]: v }))}
               structureBar={[
-                { id: "patrimonio-netto", percent: customStructure.patrimonioNetto, color: "#6EE7B7" },
+                { id: "patrimonio-netto", percent: customStructure.patrimonioNetto, color: "#059669" },
                 { id: "fondi-debiti-mlt", percent: customStructure.debitiMLT, color: "#34D399" },
-                { id: "debiti-breve", percent: customStructure.debitiBreve, color: "#10B981" },
+                { id: "debiti-breve", percent: customStructure.debitiBreve, color: "#6EE7B7" },
               ]}
             />
           </div>
@@ -715,47 +715,47 @@ export default function App() {
           {/* Balance Check */}
           <div>
             <div
-              className={`rounded-xl shadow-lg p-6 border-2 transition-all ${
+              className={`rounded-xl shadow-lg p-6 max-[617px]:p-3 border-2 transition-all ${
                 isBalanced
                   ? darkMode ? "bg-green-900/30 border-green-600" : "bg-green-50 border-green-500"
                   : darkMode ? "bg-red-900/30 border-red-600" : "bg-red-50 border-red-500"
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between max-[617px]:flex-col max-[617px]:items-start max-[617px]:gap-3">
+                <div className="flex items-center gap-4 max-[617px]:gap-2">
                   {isBalanced ? (
-                    <CheckCircle2 className="w-8 h-8 text-green-600" />
+                    <CheckCircle2 className="w-8 h-8 max-[617px]:w-6 max-[617px]:h-6 text-green-600" />
                   ) : (
-                    <AlertCircle className="w-8 h-8 text-red-600" />
+                    <AlertCircle className="w-8 h-8 max-[617px]:w-6 max-[617px]:h-6 text-red-600" />
                   )}
                   <div>
-                    <h3 className={`text-lg font-bold ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
+                    <h3 className={`text-lg max-[617px]:text-sm font-bold ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
                       Verifica di Quadratura
                     </h3>
-                    <p className={`text-sm ${darkMode ? "text-slate-400" : "text-gray-600"}`}>
+                    <p className={`text-sm max-[617px]:text-xs ${darkMode ? "text-slate-400" : "text-gray-600"}`}>
                       {isBalanced
                         ? "Il bilancio è correttamente bilanciato"
                         : "Il bilancio presenta uno sbilancio"}
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-8 text-center">
+                <div className="grid grid-cols-3 gap-8 max-[617px]:gap-3 max-[617px]:w-full text-center">
                   <div>
                     <div className={`text-xs mb-1 ${darkMode ? "text-slate-400" : "text-gray-600"}`}>Totale Attivo</div>
-                    <div className="text-xl font-bold text-blue-600">
+                    <div className="text-xl max-[617px]:text-base font-bold text-blue-600">
                       €{totalAttivo.toLocaleString("it-IT")}
                     </div>
                   </div>
                   <div>
                     <div className={`text-xs mb-1 ${darkMode ? "text-slate-400" : "text-gray-600"}`}>Totale Passivo</div>
-                    <div className="text-xl font-bold text-purple-600">
+                    <div className="text-xl max-[617px]:text-base font-bold text-purple-600">
                       €{totalPassivo.toLocaleString("it-IT")}
                     </div>
                   </div>
                   <div>
                     <div className={`text-xs mb-1 ${darkMode ? "text-slate-400" : "text-gray-600"}`}>Differenza</div>
                     <div
-                      className={`text-xl font-bold ${
+                      className={`text-xl max-[617px]:text-base font-bold ${
                         isBalanced ? "text-green-600" : "text-red-600"
                       }`}
                     >

@@ -67,37 +67,37 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
     hasFormulas: true,
   },
   Ro: {
-    label: "Ro",
+    label: "Reddito Operativo (Ro)",
     description: "Risultato della gestione caratteristica (Reddito operativo)",
     isPercentage: false,
     hasFormulas: true,
   },
   Rn: {
-    label: "Rn",
+    label: "Reddito Netto (Rn)",
     description: "Utile o perdita d'esercizio (Reddito netto)",
     isPercentage: false,
     hasFormulas: true,
   },
   Cp: {
-    label: "Cp",
+    label: "Capitale Proprio (Cp)",
     description: "Patrimonio netto (Capitale proprio)",
     isPercentage: false,
     hasFormulas: true,
   },
   Ci: {
-    label: "Ci",
+    label: "Capitale Investito (Ci)",
     description: "Totale degli impieghi (Capitale investito)",
     isPercentage: false,
     hasFormulas: true,
   },
   V: {
-    label: "V",
+    label: "Vendite (V)",
     description: "Ricavi di vendita (Vendite / Fatturato)",
     isPercentage: false,
     hasFormulas: true,
   },
   Of: {
-    label: "Of",
+    label: "Oneri Finanziari (Of)",
     description: "Interessi passivi e altri costi del debito (Oneri finanziari)",
     isPercentage: false,
     hasFormulas: true,
@@ -109,13 +109,13 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
     hasFormulas: true,
   },
   Rai: {
-    label: "Rai",
+    label: "Reddito Ante Imposte (Rai)",
     description: "Risultato economico prima del calcolo delle tasse (Reddito ante imposte)",
     isPercentage: false,
     hasFormulas: true,
   },
   Debiti: {
-    label: "Debiti",
+    label: "Debiti (Capitale di terzi)",
     description: "Capitale di terzi",
     isPercentage: false,
     hasFormulas: true,
@@ -760,25 +760,25 @@ export default function FormulaCalculator() {
 
   return (
     <TooltipProvider>
-      <Card className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Calculator className="w-6 h-6 text-blue-600" />
+      <Card className="bg-white rounded-xl shadow-lg p-6 max-[617px]:p-3 border border-gray-200">
+        <div className="mb-6 max-[617px]:mb-3 flex items-center justify-between max-[617px]:flex-col max-[617px]:items-start max-[617px]:gap-2">
+          <div className="flex items-center gap-3 max-[617px]:gap-2">
+            <Calculator className="w-6 h-6 max-[617px]:w-5 max-[617px]:h-5 text-blue-600" />
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl max-[617px]:text-lg font-bold text-gray-900">
                 Calcolatore di Formule Finanziarie
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm max-[617px]:text-xs text-gray-600">
                 Inserisci i valori e il sistema suggerirà automaticamente le formule
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col items-end gap-2 min-[566px]:flex-row min-[566px]:items-center max-[617px]:self-end">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowAllFormulasDialog(true)}
-              className="whitespace-nowrap"
+              className="whitespace-nowrap max-[490px]:text-xs max-[490px]:px-2 max-[490px]:py-1 max-[490px]:h-7"
             >
               Mostra tutte le formule
             </Button>
@@ -786,16 +786,16 @@ export default function FormulaCalculator() {
               variant="destructive"
               size="sm"
               onClick={() => setShowResetDialog(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 max-[490px]:text-xs max-[490px]:px-2 max-[490px]:py-1 max-[490px]:h-7 max-[490px]:gap-1"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-4 h-4 max-[490px]:w-3 max-[490px]:h-3" />
               Reset tutto
             </Button>
           </div>
         </div>
 
         {/* Metrics Grid - Responsive: 1 col on mobile, 2 on tablet, 4 on desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 max-[617px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 max-[617px]:gap-2">
           {METRICS_ORDER.map((metric) => {
             const config = METRIC_CONFIG[metric];
             const numSuggestions = suggestedFormulas[metric]?.length || 0;
@@ -820,7 +820,7 @@ export default function FormulaCalculator() {
             return (
               <div
                 key={metric}
-                className={`rounded-lg p-3 transition-all h-full min-h-[80px] flex flex-col ${cellBorderClasses}`}
+                className={`rounded-lg p-3 max-[617px]:p-2 transition-all h-full min-h-[80px] max-[617px]:min-h-[60px] flex flex-col ${cellBorderClasses}`}
                 onClick={() => {
                   if (numSuggestions > 0) {
                     setSelectedFormulaMetric(metric);
@@ -840,7 +840,7 @@ export default function FormulaCalculator() {
                       }}
                     >
                       <div className="flex items-center gap-1 flex-1">
-                        <Label className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <Label className="text-sm max-[617px]:text-xs font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                           {config.label}
                         </Label>
                         {config.isPercentage ? (
@@ -889,7 +889,7 @@ export default function FormulaCalculator() {
                       onChange={(e) => handleInputChange(metric, e.target.value)}
                       onBlur={(e) => handleInputBlur(metric, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      className={`text-sm w-full ${
+                      className={`text-sm w-full placeholder:italic placeholder:opacity-50 ${
                         isManuallySet && !inputErrors[metric]
                           ? "text-green-700 font-bold border-0"
                           : inputErrors[metric]
