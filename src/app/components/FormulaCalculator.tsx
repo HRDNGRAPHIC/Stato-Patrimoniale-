@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
@@ -32,6 +32,7 @@ interface MetricConfig {
   description: string;
   isPercentage: boolean;
   hasFormulas: boolean;
+  notes?: string;
 }
 
 // Configuration
@@ -89,12 +90,7 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
     description: "Totale degli impieghi (Capitale investito)",
     isPercentage: false,
     hasFormulas: true,
-  },
-  V: {
-    label: "Vendite (V)",
-    description: "Ricavi di vendita (Vendite / Fatturato)",
-    isPercentage: false,
-    hasFormulas: true,
+    notes: "Il Capitale Investito è il totale delle attività e delle passività.",
   },
   Of: {
     label: "Oneri Finanziari (Of)",
@@ -120,6 +116,18 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
     isPercentage: false,
     hasFormulas: true,
   },
+  IndiceRotazione: {
+    label: "Indice di Rotazione",
+    description: "Rapporto tra ricavi netti e capitale investito (Ricavi netti / Ci)",
+    isPercentage: true,
+    hasFormulas: true,
+  },
+  RicaviNetti: {
+    label: "Ricavi Netti",
+    description: "Ricavi netti di vendita",
+    isPercentage: false,
+    hasFormulas: true,
+  },
 };
 
 // Formula database
@@ -132,9 +140,9 @@ const FORMULAS: Record<string, Formula[]> = {
       priority: 1,
     },
     {
-      inputs: ["V", "Ros"],
-      compact: "Ro = V × ROS / 100",
-      extended: "Reddito operativo (Ro) = V × ROS / 100",
+      inputs: ["RicaviNetti", "Ros"],
+      compact: "Ro = Ricavi netti × ROS / 100",
+      extended: "Reddito operativo (Ro) = Ricavi netti × ROS / 100",
       priority: 3,
     },
   ],
@@ -170,17 +178,17 @@ const FORMULAS: Record<string, Formula[]> = {
   ],
   Ros: [
     {
-      inputs: ["Ro", "V"],
-      compact: "ROS = Ro / V × 100",
-      extended: "ROS = Ro / V × 100",
+      inputs: ["Ro", "RicaviNetti"],
+      compact: "Ros = Ro / Ricavi netti × 100",
+      extended: "Ros = Reddito operativo / Ricavi netti × 100",
       priority: 1,
     },
   ],
   Rod: [
     {
       inputs: ["Of", "Debiti"],
-      compact: "Rod = Of / Debiti × 100",
-      extended: "Rod = Of / Debiti × 100 (costo medio del debito)",
+      compact: "Rod = Of / Capitale di Terzi × 100",
+      extended: "Rod = Oneri finanziari / Capitale di Terzi × 100",
       priority: 1,
     },
   ],
@@ -208,7 +216,7 @@ const FORMULAS: Record<string, Formula[]> = {
     {
       inputs: ["Ci", "Debiti"],
       compact: "Cp = Ci - Debiti",
-      extended: "Capitale proprio (Cp) = Ci - Debiti",
+      extended: "Capitale proprio (Cp) = Ci - Debiti (dove Ci è il totale delle attività)",
       priority: 2,
     },
     {
@@ -223,7 +231,7 @@ const FORMULAS: Record<string, Formula[]> = {
       inputs: ["Ci", "Cp"],
       compact: "Leverage = Ci / Cp",
       extended:
-        "Leverage (rapporto d'indebitamento) = Ci / Cp // Nota: se =1 l'azienda non ha debiti; se >2 è molto indebitata",
+        "Leverage = Ci / Cp — Nota: se = 1, l'azienda non ha debiti; se > 2, è molto indebitata.",
       priority: 1,
     },
   ],
@@ -251,6 +259,22 @@ const FORMULAS: Record<string, Formula[]> = {
       priority: 1,
     },
   ],
+  RicaviNetti: [
+    {
+      inputs: ["IndiceRotazione", "Ci"],
+      compact: "Ricavi netti = Indice di Rotazione × Ci",
+      extended: "Ricavi netti = Indice di Rotazione × Capitale investito",
+      priority: 1,
+    },
+  ],
+  IndiceRotazione: [
+    {
+      inputs: ["RicaviNetti", "Ci"],
+      compact: "IR = Ricavi Netti / Ci",
+      extended: "Indice di Rotazione = Ricavi Netti / Capitale investito",
+      priority: 1,
+    },
+  ],
 };
 
 // Blacklisted formulas that should never be suggested
@@ -274,7 +298,8 @@ export default function FormulaCalculator() {
     "Rn",
     "Cp",
     "Ci",
-    "V",
+    "RicaviNetti",
+    "IndiceRotazione",
     "Of",
     "Imposte",
     "Rai",
@@ -293,6 +318,8 @@ export default function FormulaCalculator() {
   >(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showAllFormulasDialog, setShowAllFormulasDialog] = useState(false);
+  const [longPressMetric, setLongPressMetric] = useState<string | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -561,11 +588,11 @@ export default function FormulaCalculator() {
         if (formula.inputs.includes("Roi") && m.Roi != null && m.Ci != null) {
           result = (m.Roi * m.Ci) / 100;
         } else if (
-          formula.inputs.includes("V") &&
-          m.V != null &&
+          formula.inputs.includes("RicaviNetti") &&
+          m.RicaviNetti != null &&
           m.Ros != null
         ) {
-          result = (m.V * m.Ros) / 100;
+          result = (m.RicaviNetti * m.Ros) / 100;
         }
         break;
       case "Rn":
@@ -584,7 +611,7 @@ export default function FormulaCalculator() {
         }
         break;
       case "Roe":
-        if (m.Rn != null && m.Cp != null) {
+        if (formula.inputs.includes("Rn") && m.Rn != null && m.Cp != null) {
           result = (m.Rn / m.Cp) * 100;
         }
         break;
@@ -594,8 +621,8 @@ export default function FormulaCalculator() {
         }
         break;
       case "Ros":
-        if (m.Ro != null && m.V != null) {
-          result = (m.Ro / m.V) * 100;
+        if (formula.inputs.includes("RicaviNetti") && m.Ro != null && m.RicaviNetti != null) {
+          result = (m.Ro / m.RicaviNetti) * 100;
         }
         break;
       case "Rod":
@@ -657,6 +684,16 @@ export default function FormulaCalculator() {
       case "Rai":
         if (m.Ro != null && m.Of != null) {
           result = m.Ro - m.Of;
+        }
+        break;
+      case "RicaviNetti":
+        if (m.IndiceRotazione != null && m.Ci != null) {
+          result = m.IndiceRotazione * m.Ci;
+        }
+        break;
+      case "IndiceRotazione":
+        if (m.RicaviNetti != null && m.Ci != null) {
+          result = m.RicaviNetti / m.Ci;
         }
         break;
       default:
@@ -804,9 +841,11 @@ export default function FormulaCalculator() {
             const value = metrics[metric];
             const mostCommonFormula = getMostCommonFormula(metric);
 
+            const hasFormulas = (FORMULAS[metric] || []).length > 0;
+
             // Determine cell border classes based on state
             // NOTE: Green borders now only on the inner input div, not on outer cell
-            let cellBorderClasses = "border border-gray-200 bg-white";
+            let cellBorderClasses = "border border-gray-200 bg-white cursor-pointer hover:shadow-md transition-shadow";
             if (numSuggestions === 1) {
               // Blue border for single suggestion
               cellBorderClasses =
@@ -822,8 +861,24 @@ export default function FormulaCalculator() {
                 key={metric}
                 className={`rounded-lg p-3 max-[617px]:p-2 transition-all h-full min-h-[80px] max-[617px]:min-h-[60px] flex flex-col ${cellBorderClasses}`}
                 onClick={() => {
-                  if (numSuggestions > 0) {
-                    setSelectedFormulaMetric(metric);
+                  setSelectedFormulaMetric(metric);
+                }}
+                onTouchStart={() => {
+                  const timer = setTimeout(() => {
+                    setLongPressMetric(metric);
+                  }, 500);
+                  longPressTimerRef.current = timer;
+                }}
+                onTouchEnd={() => {
+                  if (longPressTimerRef.current) {
+                    clearTimeout(longPressTimerRef.current);
+                    longPressTimerRef.current = null;
+                  }
+                }}
+                onTouchMove={() => {
+                  if (longPressTimerRef.current) {
+                    clearTimeout(longPressTimerRef.current);
+                    longPressTimerRef.current = null;
                   }
                 }}
               >
@@ -834,9 +889,7 @@ export default function FormulaCalculator() {
                       className="flex items-start justify-between mb-2 cursor-pointer group"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (numSuggestions > 0) {
-                          setSelectedFormulaMetric(metric);
-                        }
+                        setSelectedFormulaMetric(metric);
                       }}
                     >
                       <div className="flex items-center gap-1 flex-1">
@@ -854,11 +907,9 @@ export default function FormulaCalculator() {
                   <TooltipContent className="max-w-xs">
                     <div className="text-sm">
                       <p className="font-semibold">{config.description}</p>
-                      {numSuggestions > 0 && (
-                        <p className="text-xs mt-1 text-blue-100">
-                          Clicca per vedere le formule disponibili
-                        </p>
-                      )}
+                      <p className="text-xs mt-1 text-blue-100">
+                        Clicca per vedere le formule disponibili
+                      </p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -924,29 +975,60 @@ export default function FormulaCalculator() {
               Formule per {METRIC_CONFIG[selectedFormulaMetric!]?.label}
             </DialogTitle>
             <DialogDescription>
-              Seleziona la formula che desideri applicare
+              {METRIC_CONFIG[selectedFormulaMetric!]?.description}
             </DialogDescription>
           </DialogHeader>
 
+          {selectedFormulaMetric && METRIC_CONFIG[selectedFormulaMetric]?.notes && (
+            <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+              ℹ️ {METRIC_CONFIG[selectedFormulaMetric].notes}
+            </p>
+          )}
+
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {suggestedFormulas[selectedFormulaMetric!]?.map(
-              (formula, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg p-3 hover:bg-blue-50 cursor-pointer transition-colors"
-                  onClick={() => applyFormula(selectedFormulaMetric!, formula)}
-                >
-                  <p className="font-bold text-sm text-blue-700">
-                    {formula.compact}
-                  </p>
-                  <p className="text-xs text-gray-700 mt-1">
-                    {formula.extended}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Priorità: {formula.priority}
-                  </p>
-                </div>
+            {(FORMULAS[selectedFormulaMetric!] || []).length > 0 ? (
+              (FORMULAS[selectedFormulaMetric!] || []).map(
+                (formula, index) => {
+                  const isApplicable = suggestedFormulas[selectedFormulaMetric!]?.some(
+                    (sf) => sf.compact === formula.compact
+                  );
+                  return (
+                    <div
+                      key={index}
+                      className={`border rounded-lg p-3 transition-colors ${
+                        isApplicable
+                          ? "border-blue-400 bg-blue-50 hover:bg-blue-100 cursor-pointer"
+                          : "border-gray-200 bg-gray-50 opacity-60"
+                      }`}
+                      onClick={() => {
+                        if (isApplicable) {
+                          applyFormula(selectedFormulaMetric!, formula);
+                        }
+                      }}
+                    >
+                      <p className={`font-bold text-sm ${isApplicable ? "text-blue-700" : "text-gray-500"}`}>
+                        {formula.compact}
+                      </p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        {formula.extended}
+                      </p>
+                      {isApplicable ? (
+                        <p className="text-xs text-green-600 font-semibold mt-1">
+                          ✓ Calcolabile con i dati inseriti
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Richiede: {formula.inputs.filter(i => metrics[i] == null).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
               )
+            ) : (
+              <p className="text-sm text-gray-500 italic">
+                Nessuna formula disponibile. Questo valore va inserito manualmente.
+              </p>
             )}
           </div>
 
@@ -1003,6 +1085,11 @@ export default function FormulaCalculator() {
                   <h3 className="font-bold text-blue-700 mb-2">
                     {METRIC_CONFIG[metric]?.label || metric}
                   </h3>
+                  {METRIC_CONFIG[metric]?.notes && (
+                    <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200 mb-2 ml-3">
+                      ℹ️ {METRIC_CONFIG[metric].notes}
+                    </p>
+                  )}
                   <div className="space-y-2 ml-3">
                     {FORMULAS[metric].map((formula, index) => (
                       <div key={index} className="text-sm">
@@ -1025,6 +1112,31 @@ export default function FormulaCalculator() {
               variant="outline"
               onClick={() => setShowAllFormulasDialog(false)}
             >
+              Chiudi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Long Press Description Dialog (mobile) */}
+      <Dialog open={longPressMetric !== null} onOpenChange={(open) => {
+        if (!open) setLongPressMetric(null);
+      }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>
+              {METRIC_CONFIG[longPressMetric!]?.label}
+            </DialogTitle>
+            <DialogDescription>
+              {METRIC_CONFIG[longPressMetric!]?.description}
+            </DialogDescription>
+          </DialogHeader>
+          {longPressMetric && METRIC_CONFIG[longPressMetric]?.notes && (
+            <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+              ℹ️ {METRIC_CONFIG[longPressMetric].notes}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLongPressMetric(null)}>
               Chiudi
             </Button>
           </DialogFooter>
