@@ -16,6 +16,8 @@ interface BalanceSheetSectionProps {
   items: BalanceSheetItemData[];
   onValueChange: (id: string, value: number) => void;
   themeColor: string;
+  /** Lighter shade for shimmer effect on header line */
+  themeColorLight?: string;
   /** Optional: show N / N-1 year columns with totals for main categories */
   showYearColumns?: boolean;
   valuesN?: Record<string, number>;
@@ -31,6 +33,8 @@ interface BalanceSheetSectionProps {
   totalOverrideN1?: number;
   onTotalChangeN?: (value: number) => void;
   onTotalChangeN1?: (value: number) => void;
+  /** Start with all categories collapsed */
+  startCollapsed?: boolean;
 }
 
 export function BalanceSheetSection({
@@ -38,6 +42,7 @@ export function BalanceSheetSection({
   items,
   onValueChange,
   themeColor,
+  themeColorLight = '#ffffff80',
   showYearColumns = false,
   valuesN = {},
   valuesN1 = {},
@@ -49,6 +54,7 @@ export function BalanceSheetSection({
   totalOverrideN1 = 0,
   onTotalChangeN,
   onTotalChangeN1,
+  startCollapsed = false,
 }: BalanceSheetSectionProps) {
   /* Collect level 0 IDs so only main categories start expanded */
   const collectExpandableIds = (list: BalanceSheetItemData[]): string[] => {
@@ -56,7 +62,7 @@ export function BalanceSheetSection({
   };
 
   const [expandedItems, setExpandedItems] = useState<Set<string>>(
-    () => new Set(collectExpandableIds(items))
+    () => startCollapsed ? new Set<string>() : new Set(collectExpandableIds(items))
   );
 
   const toggleExpand = (id: string) => {
@@ -125,7 +131,7 @@ export function BalanceSheetSection({
 
   /* Short title for footer on mobile */
   const shortTitle: Record<string, string> = {
-    "PASSIVO E PATRIMONIO NETTO": "PASSIVO",
+    "PASSIVO E PN": "PASSIVO",
   };
 
   const visibleRows = flattenVisible(items);
@@ -158,7 +164,7 @@ export function BalanceSheetSection({
 
           {/* ---- Header ---- */}
           <thead className="sticky top-0 z-10">
-            <tr style={{ borderBottom: `4px solid ${themeColor}` }} className={darkMode ? "bg-[#1e293b]" : "bg-white"}>
+            <tr className={darkMode ? "bg-[#1e293b]" : "bg-white"}>
               <th className={`px-6 max-[1000px]:px-3 py-4 max-[1000px]:py-2 text-left text-2xl max-[1000px]:text-base font-bold ${darkMode ? "text-slate-100" : "text-gray-900"}`}>
                 {title}
               </th>
@@ -172,6 +178,17 @@ export function BalanceSheetSection({
                   N-1
                 </th>
               )}
+            </tr>
+            <tr>
+              <th colSpan={showYearColumns ? 3 : 1} className="p-0">
+                <div
+                  className="shimmer-line"
+                  style={{
+                    backgroundColor: themeColor,
+                    '--shimmer-light': themeColorLight,
+                  } as React.CSSProperties}
+                />
+              </th>
             </tr>
           </thead>
 

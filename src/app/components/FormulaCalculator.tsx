@@ -78,6 +78,7 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
     description: "Utile o perdita d'esercizio (Reddito netto)",
     isPercentage: false,
     hasFormulas: true,
+    notes: "Il Reddito Netto corrisponde al Reddito d'Esercizio (utile o perdita d'esercizio).",
   },
   Cp: {
     label: "Capitale Proprio (Cp)",
@@ -275,6 +276,20 @@ const FORMULAS: Record<string, Formula[]> = {
       priority: 1,
     },
   ],
+  Imposte: [
+    {
+      inputs: ["Rai", "Rn"],
+      compact: "Imposte = Rai - Rn",
+      extended: "Imposte = Reddito ante imposte - Reddito netto",
+      priority: 1,
+    },
+    {
+      inputs: ["Rn", "_ImmobilizzazioniPct"],
+      compact: "Imposte = Rn × 100 / Immobilizzazioni %",
+      extended: "Imposte = Reddito netto × 100 / percentuale Immobilizzazioni (dalla struttura finanziaria)",
+      priority: 2,
+    },
+  ],
 };
 
 // Blacklisted formulas that should never be suggested
@@ -287,7 +302,11 @@ const BLACKLIST = [
 
 type MetricState = Record<string, number | null>;
 
-export default function FormulaCalculator() {
+interface FormulaCalculatorProps {
+  immobilizzazioniPercent?: number;
+}
+
+export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: FormulaCalculatorProps) {
   const METRICS_ORDER = [
     "Roe",
     "Roi",
@@ -357,7 +376,10 @@ export default function FormulaCalculator() {
 
       const applicableFormulas = (FORMULAS[metric] || []).filter((formula) => {
         // Check if all inputs are available
-        const hasAllInputs = formula.inputs.every((input) => metrics[input] != null);
+        const hasAllInputs = formula.inputs.every((input) => {
+          if (input === "_ImmobilizzazioniPct") return immobilizzazioniPercent > 0;
+          return metrics[input] != null;
+        });
         return hasAllInputs;
       });
 
@@ -369,7 +391,7 @@ export default function FormulaCalculator() {
     });
 
     setSuggestedFormulas(newSuggestions);
-  }, [metrics, manuallySet]);
+  }, [metrics, manuallySet, immobilizzazioniPercent]);
 
   // Format input helper
   const formatValue = (value: string, isPercentage: boolean): string => {
@@ -696,6 +718,17 @@ export default function FormulaCalculator() {
           result = m.RicaviNetti / m.Ci;
         }
         break;
+      case "Imposte":
+        if (formula.inputs.includes("Rai") && m.Rai != null && m.Rn != null) {
+          result = m.Rai - m.Rn;
+        } else if (
+          formula.inputs.includes("_ImmobilizzazioniPct") &&
+          m.Rn != null &&
+          immobilizzazioniPercent > 0
+        ) {
+          result = (m.Rn * 100) / immobilizzazioniPercent;
+        }
+        break;
       default:
         break;
     }
@@ -1018,7 +1051,10 @@ export default function FormulaCalculator() {
                         </p>
                       ) : (
                         <p className="text-xs text-gray-400 mt-1">
-                          Richiede: {formula.inputs.filter(i => metrics[i] == null).join(", ")}
+                          Richiede: {formula.inputs.filter(i => {
+                            if (i === "_ImmobilizzazioniPct") return immobilizzazioniPercent <= 0;
+                            return metrics[i] == null;
+                          }).map(i => i === "_ImmobilizzazioniPct" ? "Immobilizzazioni % (struttura finanziaria)" : i).join(", ")}
                         </p>
                       )}
                     </div>

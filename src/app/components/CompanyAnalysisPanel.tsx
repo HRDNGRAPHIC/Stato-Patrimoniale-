@@ -53,7 +53,6 @@ export function getDefaultStructure(companyType: "industrial" | "mercantile"): F
 interface CompanyAnalysisPanelProps {
   companyType: "industrial" | "mercantile";
   onCompanyTypeChange: (type: "industrial" | "mercantile") => void;
-  onApplyPreset: (type: "industrial" | "mercantile") => void;
   customStructure: FinancialStructure;
   onStructureChange: (structure: FinancialStructure) => void;
   darkMode?: boolean;
@@ -62,7 +61,6 @@ interface CompanyAnalysisPanelProps {
 export function CompanyAnalysisPanel({
   companyType,
   onCompanyTypeChange,
-  onApplyPreset,
   customStructure,
   onStructureChange,
   darkMode = false,
@@ -122,14 +120,6 @@ export function CompanyAnalysisPanel({
         </div>
       </div>
 
-      {/* Apply Preset Button */}
-      <button
-        onClick={() => onApplyPreset(companyType)}
-        className="w-full mb-6 max-[617px]:mb-3 px-4 max-[617px]:px-2 py-3 max-[617px]:py-2 bg-indigo-600 text-white rounded-lg font-semibold max-[617px]:text-sm hover:bg-indigo-700 transition-colors shadow-md"
-      >
-        Applica Struttura Tipica {companyType === "industrial" ? "Industriale" : "Mercantile"}
-      </button>
-
       {/* Benchmark Visualization */}
       <div className="space-y-6 max-[617px]:space-y-3">
         {/* Assets Structure */}
@@ -142,7 +132,7 @@ export function CompanyAnalysisPanel({
               label="Immobilizzazioni"
               value={customStructure.immobilizzazioni}
               benchmark={benchmark.immobilizzazioni}
-              color={companyType === "industrial" ? "bg-blue-500" : "bg-green-500"}
+              color={companyType === "industrial" ? "bg-blue-600" : "bg-green-600"}
               onChange={(v) => handleValueChange("immobilizzazioni", v)}
               equilibrium={getEquilibriumStatus(
                 customStructure.immobilizzazioni,
@@ -173,7 +163,7 @@ export function CompanyAnalysisPanel({
               label="Patrimonio Netto"
               value={customStructure.patrimonioNetto}
               benchmark={benchmark.patrimonioNetto}
-              color="bg-[#059669]"
+              color={companyType === "industrial" ? "bg-blue-700" : "bg-green-700"}
               onChange={(v) => handleValueChange("patrimonioNetto", v)}
               equilibrium={getEquilibriumStatus(
                 customStructure.patrimonioNetto,
@@ -184,7 +174,7 @@ export function CompanyAnalysisPanel({
               label="Debiti M/L Termine"
               value={customStructure.debitiMLT}
               benchmark={benchmark.debitiMLT}
-              color="bg-[#34D399]"
+              color={companyType === "industrial" ? "bg-blue-500" : "bg-green-500"}
               onChange={(v) => handleValueChange("debitiMLT", v)}
               equilibrium={getEquilibriumStatus(
                 customStructure.debitiMLT,
@@ -195,7 +185,7 @@ export function CompanyAnalysisPanel({
               label="Debiti Breve Termine"
               value={customStructure.debitiBreve}
               benchmark={benchmark.debitiBreve}
-              color="bg-[#6EE7B7]"
+              color={companyType === "industrial" ? "bg-blue-300" : "bg-green-300"}
               onChange={(v) => handleValueChange("debitiBreve", v)}
               equilibrium={getEquilibriumStatus(
                 customStructure.debitiBreve,
@@ -253,13 +243,14 @@ function BenchmarkBar({
     [value]
   );
 
-  const handlePointerDown = useCallback(
+  const handleHandlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
       isDragging.current = true;
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      onChange(calcPercent(e.clientX));
     },
-    [calcPercent, onChange]
+    []
   );
 
   const handlePointerMove = useCallback(
@@ -306,11 +297,10 @@ function BenchmarkBar({
         )}
       </div>
 
-      {/* Benchmark range visualization — draggable */}
+      {/* Benchmark range visualization — draggable via handle only */}
       <div
         ref={barRef}
-        className="relative h-10 max-[617px]:h-7 bg-gray-200 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none"
-        onPointerDown={handlePointerDown}
+        className="relative h-10 max-[617px]:h-7 bg-gray-200 rounded-lg overflow-hidden select-none"
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
@@ -339,11 +329,14 @@ function BenchmarkBar({
             <span className="text-xs font-bold text-white">{value.toFixed(0)}%</span>
           )}
         </div>
-        {/* Drag handle at edge of bar */}
+        {/* Drag handle at edge of bar — only interactive element */}
         <div
-          className="absolute top-0 h-full w-1 bg-white/70 pointer-events-none"
-          style={{ left: `${value}%`, transform: "translateX(-2px)" }}
-        />
+          className="absolute top-0 h-full w-5 max-[617px]:w-4 cursor-grab active:cursor-grabbing touch-none z-10 flex items-center justify-center"
+          style={{ left: `${value}%`, transform: "translateX(-50%)" }}
+          onPointerDown={handleHandlePointerDown}
+        >
+          <div className="w-1.5 h-6 max-[617px]:h-4 bg-white/90 rounded-full shadow-md border border-gray-400" />
+        </div>
       </div>
 
       {/* Legend */}

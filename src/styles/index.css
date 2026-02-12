@@ -151,6 +151,44 @@
 
 /* UIverse Switch by Admin12121 — MIT License */
 
+/* Shimmer line for card headers */
+.shimmer-line {
+  height: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--shimmer-light) 50%,
+    transparent 100%
+  );
+  animation: shimmer-sweep 3s infinite linear;
+}
+@keyframes shimmer-sweep {
+  0% {
+    left: -60%;
+  }
+  60% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+@media (max-width: 1000px) {
+  .shimmer-line {
+    height: 3px;
+  }
+}
+
 /* UIverse Shine Button by neerajbaniwal — MIT License */
 .btn-shine {
   padding: 12px 48px;

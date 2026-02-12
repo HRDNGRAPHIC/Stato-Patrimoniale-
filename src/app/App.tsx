@@ -316,6 +316,231 @@ const createEmptyPassivoData = (): BalanceSheetItemData[] => [
   },
 ];
 
+const createEmptyContoEconomicoData = (): BalanceSheetItemData[] => [
+  {
+    id: "ce-valore-produzione",
+    label: "A) Valore della produzione",
+    value: 0,
+    level: 0,
+    children: [
+      {
+        id: "ce-ricavi-vendite",
+        label: "1) Ricavi delle vendite e delle prestazioni",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-var-rimanenze-prodotti",
+        label: "2) Variazioni delle rimanenze di prodotti finiti",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-var-lavori-corso",
+        label: "3) Variazioni dei lavori in corso su ordinazione",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-incrementi-immob",
+        label: "4) Incrementi di immobilizzazioni per lavori interni",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-altri-ricavi",
+        label: "5) Altri ricavi e proventi",
+        value: 0,
+        level: 1,
+      },
+    ],
+  },
+  {
+    id: "ce-costi-produzione",
+    label: "B) Costi della produzione",
+    value: 0,
+    level: 0,
+    children: [
+      {
+        id: "ce-materie-prime",
+        label: "6) Per materie prime, sussidiarie, di consumo e merci",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-servizi",
+        label: "7) Per servizi",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-godimento-beni",
+        label: "8) Per godimento beni di terzi",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-personale",
+        label: "9) Per il personale",
+        value: 0,
+        level: 1,
+        children: [
+          {
+            id: "ce-salari-stipendi",
+            label: "a) Salari e stipendi",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "ce-oneri-sociali",
+            label: "b) Oneri sociali",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "ce-tfr",
+            label: "c) Trattamento di fine rapporto",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "ce-quiescenza",
+            label: "d) Trattamento di quiescenza",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "ce-altri-costi-personale",
+            label: "e) Altri costi",
+            value: 0,
+            level: 2,
+          },
+        ],
+      },
+      {
+        id: "ce-ammortamenti",
+        label: "10) Ammortamenti e svalutazioni",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-var-rimanenze-materie",
+        label: "11) Variazioni delle rimanenze di materie prime, sussidiarie, di consumo e merci",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-accantonamenti-rischi",
+        label: "12) Accantonamenti per rischi",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-altri-accantonamenti",
+        label: "13) Altri accantonamenti",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-oneri-diversi",
+        label: "14) Oneri diversi di gestione",
+        value: 0,
+        level: 1,
+      },
+    ],
+  },
+  {
+    id: "ce-differenza-ab",
+    label: "Differenza tra valore e costi della produzione (A-B)",
+    value: 0,
+    level: 0,
+  },
+  {
+    id: "ce-proventi-oneri-fin",
+    label: "C) Proventi e oneri finanziari",
+    value: 0,
+    level: 0,
+    children: [
+      {
+        id: "ce-proventi-partecipazioni",
+        label: "15) Proventi da partecipazioni",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-altri-proventi-fin",
+        label: "16) Altri proventi finanziari",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-interessi-oneri",
+        label: "17) Interessi e altri oneri finanziari",
+        value: 0,
+        level: 1,
+      },
+    ],
+  },
+  {
+    id: "ce-rettifiche",
+    label: "D) Rettifiche di valore di attività finanziarie",
+    value: 0,
+    level: 0,
+    children: [
+      {
+        id: "ce-rivalutazioni",
+        label: "18) Rivalutazioni",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-svalutazioni",
+        label: "19) Svalutazioni",
+        value: 0,
+        level: 1,
+      },
+    ],
+  },
+  {
+    id: "ce-proventi-oneri-straord",
+    label: "E) Proventi e oneri straordinari",
+    value: 0,
+    level: 0,
+    children: [
+      {
+        id: "ce-proventi-straord",
+        label: "20) Proventi straordinari",
+        value: 0,
+        level: 1,
+      },
+      {
+        id: "ce-oneri-straord",
+        label: "21) Oneri straordinari",
+        value: 0,
+        level: 1,
+      },
+    ],
+  },
+  {
+    id: "ce-risultato-imposte",
+    label: "Risultato prima delle imposte (A-B ±C ±D ±E)",
+    value: 0,
+    level: 0,
+  },
+  {
+    id: "ce-imposte",
+    label: "Imposte sul reddito dell'esercizio",
+    value: 0,
+    level: 0,
+  },
+  {
+    id: "ce-avanzo-disavanzo",
+    label: "Avanzo/disavanzo economico",
+    value: 0,
+    level: 0,
+  },
+];
+
 export default function App() {
   // ─── Loading screen state ───
   type LoadingPhase = "loading" | "login" | "brand" | "shrink" | "done";
@@ -380,6 +605,13 @@ export default function App() {
   const [attivoTotalOverrideN1, setAttivoTotalOverrideN1] = useState(0);
   const [passivoTotalOverrideN, setPassivoTotalOverrideN] = useState(0);
   const [passivoTotalOverrideN1, setPassivoTotalOverrideN1] = useState(0);
+
+  // Conto Economico data and year values
+  const [contoEconomicoData, setContoEconomicoData] = useState<BalanceSheetItemData[]>(createEmptyContoEconomicoData());
+  const [ceValuesN, setCeValuesN] = useState<Record<string, number>>({});
+  const [ceValuesN1, setCeValuesN1] = useState<Record<string, number>>({});
+  const [ceTotalOverrideN, setCeTotalOverrideN] = useState(0);
+  const [ceTotalOverrideN1, setCeTotalOverrideN1] = useState(0);
 
   // Financial structure analysis (lifted from CompanyAnalysisPanel)
   const [customStructure, setCustomStructure] = useState<FinancialStructure>(
@@ -481,14 +713,19 @@ export default function App() {
   const resetAllData = () => {
     setAttivoData(createEmptyAttivoData());
     setPassivoData(createEmptyPassivoData());
+    setContoEconomicoData(createEmptyContoEconomicoData());
     setAttivoValuesN({});
     setAttivoValuesN1({});
     setPassivoValuesN({});
     setPassivoValuesN1({});
+    setCeValuesN({});
+    setCeValuesN1({});
     setAttivoTotalOverrideN(0);
     setAttivoTotalOverrideN1(0);
     setPassivoTotalOverrideN(0);
     setPassivoTotalOverrideN1(0);
+    setCeTotalOverrideN(0);
+    setCeTotalOverrideN1(0);
     setExerciseText("");
   };
 
@@ -783,7 +1020,7 @@ export default function App() {
 
         {/* Formula Calculator */}
         <div className="mt-6 max-[617px]:mt-4">
-          <FormulaCalculator />
+          <FormulaCalculator immobilizzazioniPercent={customStructure.immobilizzazioni} />
         </div>
 
         {/* Reset Button */}
@@ -828,6 +1065,7 @@ export default function App() {
               items={attivoData}
               onValueChange={handleAttivoChange}
               themeColor="#2563eb"
+              themeColorLight="#93c5fd"
               showYearColumns
               darkMode={darkMode}
               valuesN={attivoValuesN}
@@ -835,8 +1073,8 @@ export default function App() {
               onChangeN={(id, v) => setAttivoValuesN((prev) => ({ ...prev, [id]: v }))}
               onChangeN1={(id, v) => setAttivoValuesN1((prev) => ({ ...prev, [id]: v }))}
               structureBar={[
-                { id: "immobilizzazioni", percent: customStructure.immobilizzazioni, color: "#2B7FFF" },
-                { id: "attivo-circolante", percent: customStructure.attivoCircolante, color: "#1A56DB" },
+                { id: "immobilizzazioni", percent: customStructure.immobilizzazioni, color: companyType === "industrial" ? "#2563eb" : "#16a34a" },
+                { id: "attivo-circolante", percent: customStructure.attivoCircolante, color: companyType === "industrial" ? "#60a5fa" : "#4ade80" },
               ]}
               totalOverrideN={attivoTotalOverrideN}
               totalOverrideN1={attivoTotalOverrideN1}
@@ -844,10 +1082,11 @@ export default function App() {
               onTotalChangeN1={setAttivoTotalOverrideN1}
             />
             <BalanceSheetSection
-              title="PASSIVO E PATRIMONIO NETTO"
+              title="PASSIVO E PN"
               items={passivoData}
               onValueChange={handlePassivoChange}
               themeColor="#7c3aed"
+              themeColorLight="#c4b5fd"
               showYearColumns
               darkMode={darkMode}
               valuesN={passivoValuesN}
@@ -855,9 +1094,9 @@ export default function App() {
               onChangeN={(id, v) => setPassivoValuesN((prev) => ({ ...prev, [id]: v }))}
               onChangeN1={(id, v) => setPassivoValuesN1((prev) => ({ ...prev, [id]: v }))}
               structureBar={[
-                { id: "patrimonio-netto", percent: customStructure.patrimonioNetto, color: "#059669" },
-                { id: "fondi-debiti-mlt", percent: customStructure.debitiMLT, color: "#34D399" },
-                { id: "debiti-breve", percent: customStructure.debitiBreve, color: "#6EE7B7" },
+                { id: "patrimonio-netto", percent: customStructure.patrimonioNetto, color: companyType === "industrial" ? "#1d4ed8" : "#15803d" },
+                { id: "fondi-debiti-mlt", percent: customStructure.debitiMLT, color: companyType === "industrial" ? "#3b82f6" : "#22c55e" },
+                { id: "debiti-breve", percent: customStructure.debitiBreve, color: companyType === "industrial" ? "#93c5fd" : "#86efac" },
               ]}
               totalOverrideN={passivoTotalOverrideN}
               totalOverrideN1={passivoTotalOverrideN1}
@@ -925,12 +1164,41 @@ export default function App() {
           </div>
 
           {/* Analysis Panel - right-aligned, compact */}
-          <div className="flex justify-end">
-            <div className="w-full md:w-1/2 lg:w-2/5 xl:w-1/3">
+          <div className="flex flex-col md:flex-row gap-6 max-[617px]:gap-4">
+            {/* Conto Economico */}
+            <div className="order-2 md:order-1 md:basis-2/3 md:max-w-[66.666%] flex-shrink-0">
+              <BalanceSheetSection
+                title="CONTO ECONOMICO"
+                items={contoEconomicoData}
+                onValueChange={(id, v) => {
+                  const updateCE = (items: BalanceSheetItemData[]): BalanceSheetItemData[] =>
+                    items.map((item) => {
+                      if (item.id === id) return { ...item, value: v };
+                      if (item.children) return { ...item, children: updateCE(item.children) };
+                      return item;
+                    });
+                  setContoEconomicoData(updateCE(contoEconomicoData));
+                }}
+                themeColor="#d97706"
+                themeColorLight="#fcd34d"
+                showYearColumns
+                darkMode={darkMode}
+                valuesN={ceValuesN}
+                valuesN1={ceValuesN1}
+                onChangeN={(id, v) => setCeValuesN((prev) => ({ ...prev, [id]: v }))}
+                onChangeN1={(id, v) => setCeValuesN1((prev) => ({ ...prev, [id]: v }))}
+                totalOverrideN={ceTotalOverrideN}
+                totalOverrideN1={ceTotalOverrideN1}
+                onTotalChangeN={setCeTotalOverrideN}
+                onTotalChangeN1={setCeTotalOverrideN1}
+                startCollapsed
+              />
+            </div>
+            {/* Analysis Panel */}
+            <div className="order-1 md:order-2 md:basis-1/3 md:max-w-[33.333%] flex-1 min-w-0">
               <CompanyAnalysisPanel
                 companyType={companyType}
                 onCompanyTypeChange={setCompanyType}
-                onApplyPreset={applyPreset}
                 customStructure={customStructure}
                 onStructureChange={handleStructureChange}
                 darkMode={darkMode}
