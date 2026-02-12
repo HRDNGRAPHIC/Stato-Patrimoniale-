@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { BalanceSheetSection } from "./components/BalanceSheetSection";
 import { CompanyAnalysisPanel, getDefaultStructure, type FinancialStructure } from "./components/CompanyAnalysisPanel";
 import ExerciseAnalyzer from "./components/ExerciseAnalyzer";
 import FormulaCalculator from "./components/FormulaCalculator";
-import { AlertCircle, CheckCircle2, RotateCcw, Sun, Moon } from "lucide-react";
+import AdminDashboard from "./components/AdminDashboard";
+import { AlertCircle, CheckCircle2, RotateCcw, Sun, Moon, ArrowLeft } from "lucide-react";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./components/ui/dialog";
@@ -27,7 +28,7 @@ const createEmptyAttivoData = (): BalanceSheetItemData[] => [
   },
   {
     id: "immobilizzazioni",
-    label: "B. Immobilizzazioni",
+    label: "B. Immobilizzazioni Tot.",
     value: 0,
     level: 0,
     children: [
@@ -107,7 +108,7 @@ const createEmptyAttivoData = (): BalanceSheetItemData[] => [
   },
   {
     id: "attivo-circolante",
-    label: "C. Attivo circolante",
+    label: "C. Attivo circolante Tot.",
     value: 0,
     level: 0,
     children: [
@@ -198,7 +199,7 @@ const createEmptyAttivoData = (): BalanceSheetItemData[] => [
 const createEmptyPassivoData = (): BalanceSheetItemData[] => [
   {
     id: "patrimonio-netto",
-    label: "A. PATRIMONIO NETTO",
+    label: "A. PATRIMONIO NETTO Tot.",
     value: 0,
     level: 0,
     children: [
@@ -215,14 +216,44 @@ const createEmptyPassivoData = (): BalanceSheetItemData[] => [
         level: 1,
         children: [
           {
+            id: "riserva-sovrapprezzo",
+            label: "Riserva da sovr. azioni",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "riserva-rivalutazione",
+            label: "Riserva di rivalutazione",
+            value: 0,
+            level: 2,
+          },
+          {
             id: "riserva-legale",
             label: "Riserva legale",
             value: 0,
             level: 2,
           },
           {
+            id: "riserva-statutaria",
+            label: "Riserva statutaria",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "riserva-copertura-flussi",
+            label: "Riserva per oper. cop. flussi",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "riserva-negativa-azioni",
+            label: "Riserva neg. per azioni",
+            value: 0,
+            level: 2,
+          },
+          {
             id: "altre-riserve",
-            label: "Altre riserve",
+            label: "Altre Riserve",
             value: 0,
             level: 2,
           },
@@ -233,12 +264,26 @@ const createEmptyPassivoData = (): BalanceSheetItemData[] => [
         label: "III. Utile (perdita) dell'esercizio",
         value: 0,
         level: 1,
+        children: [
+          {
+            id: "utili-perdita-pn",
+            label: "Utili / Perdita PN",
+            value: 0,
+            level: 2,
+          },
+          {
+            id: "utili-perdite-esercizio",
+            label: "Utili / Perdite d'esercizio",
+            value: 0,
+            level: 2,
+          },
+        ],
       },
     ],
   },
   {
     id: "fondi-debiti-mlt",
-    label: "B. FONDI E DEBITI A MEDIO/LUNGO TERMINE",
+    label: "B. FONDI E DEBITI A M/L TERMINE Tot.",
     value: 0,
     level: 0,
     children: [
@@ -250,7 +295,7 @@ const createEmptyPassivoData = (): BalanceSheetItemData[] => [
       },
       {
         id: "tfr",
-        label: "Trattamento di fine rapporto",
+        label: "TFR",
         value: 0,
         level: 1,
       },
@@ -278,7 +323,7 @@ const createEmptyPassivoData = (): BalanceSheetItemData[] => [
   },
   {
     id: "debiti-breve",
-    label: "C. DEBITI A BREVE TERMINE",
+    label: "C. DEBITI A BREVE TERMINE Tot.",
     value: 0,
     level: 0,
     children: [
@@ -584,39 +629,201 @@ export default function App() {
 
   const showLoadingScreen = phase !== "done";
 
+  // ─── Admin & Session management ───
+  const [currentView, setCurrentView] = useState<"main" | "admin">("main");
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [editingSessionUser, setEditingSessionUser] = useState<{ nome: string; cognome: string } | null>(null);
+  const [adminNome, setAdminNome] = useState("");
+  const [adminCognome, setAdminCognome] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [saveFlash, setSaveFlash] = useState(false);
+
+  const handleAdminLogin = () => {
+    if (adminNome.trim() === "Antonio" && adminCognome.trim() === "Guida" && adminPassword === "Guida") {
+      setShowAdminDialog(false);
+      setAdminNome("");
+      setAdminCognome("");
+      setAdminPassword("");
+      setAdminError("");
+      setIsAdminLoggedIn(true);
+      setCurrentView("admin");
+    } else {
+      setAdminError("Credenziali non valide");
+    }
+  };
+
+  // ─── Load saved state from localStorage ───
+  const loadSavedState = () => {
+    try {
+      const raw = localStorage.getItem("hrdn_appState");
+      if (raw) return JSON.parse(raw);
+    } catch { /* ignore corrupt data */ }
+    return null;
+  };
+  const savedState = useMemo(() => loadSavedState(), []);
+
   // ─── App state ───
-  const [companyType, setCompanyType] = useState<"industrial" | "mercantile">("industrial");
-  const [exerciseText, setExerciseText] = useState("");
-  const [darkMode, setDarkMode] = useState(false);
+  const [companyType, setCompanyType] = useState<"industrial" | "mercantile">(
+    () => savedState?.companyType ?? "industrial"
+  );
+  const [exerciseText, setExerciseText] = useState(() => savedState?.exerciseText ?? "");
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("hrdn_darkMode");
+    return saved === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("hrdn_darkMode", String(darkMode));
+  }, [darkMode]);
   
-  const [attivoData, setAttivoData] = useState<BalanceSheetItemData[]>(createEmptyAttivoData());
-  const [passivoData, setPassivoData] = useState<BalanceSheetItemData[]>(createEmptyPassivoData());
+  const [attivoData, setAttivoData] = useState<BalanceSheetItemData[]>(
+    () => savedState?.attivoData ?? createEmptyAttivoData()
+  );
+  const [passivoData, setPassivoData] = useState<BalanceSheetItemData[]>(
+    () => savedState?.passivoData ?? createEmptyPassivoData()
+  );
 
   // N / N-1 year values for Attivo main categories
-  const [attivoValuesN, setAttivoValuesN] = useState<Record<string, number>>({});
-  const [attivoValuesN1, setAttivoValuesN1] = useState<Record<string, number>>({});
+  const [attivoValuesN, setAttivoValuesN] = useState<Record<string, number>>(
+    () => savedState?.attivoValuesN ?? {}
+  );
+  const [attivoValuesN1, setAttivoValuesN1] = useState<Record<string, number>>(
+    () => savedState?.attivoValuesN1 ?? {}
+  );
 
   // N / N-1 year values for Passivo main categories
-  const [passivoValuesN, setPassivoValuesN] = useState<Record<string, number>>({});
-  const [passivoValuesN1, setPassivoValuesN1] = useState<Record<string, number>>({});
+  const [passivoValuesN, setPassivoValuesN] = useState<Record<string, number>>(
+    () => savedState?.passivoValuesN ?? {}
+  );
+  const [passivoValuesN1, setPassivoValuesN1] = useState<Record<string, number>>(
+    () => savedState?.passivoValuesN1 ?? {}
+  );
 
   // Manual total overrides (used when total is known before categories)
-  const [attivoTotalOverrideN, setAttivoTotalOverrideN] = useState(0);
-  const [attivoTotalOverrideN1, setAttivoTotalOverrideN1] = useState(0);
-  const [passivoTotalOverrideN, setPassivoTotalOverrideN] = useState(0);
-  const [passivoTotalOverrideN1, setPassivoTotalOverrideN1] = useState(0);
+  const [attivoTotalOverrideN, setAttivoTotalOverrideN] = useState(
+    () => savedState?.attivoTotalOverrideN ?? 0
+  );
+  const [attivoTotalOverrideN1, setAttivoTotalOverrideN1] = useState(
+    () => savedState?.attivoTotalOverrideN1 ?? 0
+  );
+  const [passivoTotalOverrideN, setPassivoTotalOverrideN] = useState(
+    () => savedState?.passivoTotalOverrideN ?? 0
+  );
+  const [passivoTotalOverrideN1, setPassivoTotalOverrideN1] = useState(
+    () => savedState?.passivoTotalOverrideN1 ?? 0
+  );
 
   // Conto Economico data and year values
-  const [contoEconomicoData, setContoEconomicoData] = useState<BalanceSheetItemData[]>(createEmptyContoEconomicoData());
-  const [ceValuesN, setCeValuesN] = useState<Record<string, number>>({});
-  const [ceValuesN1, setCeValuesN1] = useState<Record<string, number>>({});
-  const [ceTotalOverrideN, setCeTotalOverrideN] = useState(0);
-  const [ceTotalOverrideN1, setCeTotalOverrideN1] = useState(0);
+  const [contoEconomicoData, setContoEconomicoData] = useState<BalanceSheetItemData[]>(
+    () => savedState?.contoEconomicoData ?? createEmptyContoEconomicoData()
+  );
+  const [ceValuesN, setCeValuesN] = useState<Record<string, number>>(
+    () => savedState?.ceValuesN ?? {}
+  );
+  const [ceValuesN1, setCeValuesN1] = useState<Record<string, number>>(
+    () => savedState?.ceValuesN1 ?? {}
+  );
+  const [ceTotalOverrideN, setCeTotalOverrideN] = useState(
+    () => savedState?.ceTotalOverrideN ?? 0
+  );
+  const [ceTotalOverrideN1, setCeTotalOverrideN1] = useState(
+    () => savedState?.ceTotalOverrideN1 ?? 0
+  );
 
   // Financial structure analysis (lifted from CompanyAnalysisPanel)
   const [customStructure, setCustomStructure] = useState<FinancialStructure>(
-    () => getDefaultStructure(companyType)
+    () => savedState?.customStructure ?? getDefaultStructure(companyType)
   );
+
+  // ─── Persist all card data to localStorage ───
+  useEffect(() => {
+    const state = {
+      companyType,
+      exerciseText,
+      attivoData,
+      passivoData,
+      attivoValuesN,
+      attivoValuesN1,
+      passivoValuesN,
+      passivoValuesN1,
+      attivoTotalOverrideN,
+      attivoTotalOverrideN1,
+      passivoTotalOverrideN,
+      passivoTotalOverrideN1,
+      contoEconomicoData,
+      ceValuesN,
+      ceValuesN1,
+      ceTotalOverrideN,
+      ceTotalOverrideN1,
+      customStructure,
+    };
+    localStorage.setItem("hrdn_appState", JSON.stringify(state));
+  }, [
+    companyType, exerciseText,
+    attivoData, passivoData,
+    attivoValuesN, attivoValuesN1,
+    passivoValuesN, passivoValuesN1,
+    attivoTotalOverrideN, attivoTotalOverrideN1,
+    passivoTotalOverrideN, passivoTotalOverrideN1,
+    contoEconomicoData,
+    ceValuesN, ceValuesN1,
+    ceTotalOverrideN, ceTotalOverrideN1,
+    customStructure,
+  ]);
+
+  // ─── Save session to localStorage ───
+  const handleSaveSession = useCallback(() => {
+    const sessionData = {
+      companyType,
+      exerciseText,
+      attivoData,
+      passivoData,
+      attivoValuesN,
+      attivoValuesN1,
+      passivoValuesN,
+      passivoValuesN1,
+      attivoTotalOverrideN,
+      attivoTotalOverrideN1,
+      passivoTotalOverrideN,
+      passivoTotalOverrideN1,
+      contoEconomicoData,
+      ceValuesN,
+      ceValuesN1,
+      ceTotalOverrideN,
+      ceTotalOverrideN1,
+      customStructure,
+    };
+    const saveUserName = editingSessionUser ?? userName;
+    const session = {
+      id: crypto.randomUUID(),
+      userName: { nome: saveUserName.nome, cognome: saveUserName.cognome },
+      savedAt: new Date().toISOString(),
+      data: sessionData,
+    };
+    // Overwrite existing session for same user (nome+cognome), keep others
+    let existing: any[] = [];
+    try {
+      const raw = localStorage.getItem("hrdn_sessions");
+      if (raw) existing = JSON.parse(raw);
+    } catch { /* ignore */ }
+    const userKey = `${saveUserName.nome.toLowerCase()}_${saveUserName.cognome.toLowerCase()}`;
+    existing = existing.filter((s: any) => {
+      const sKey = `${s.userName?.nome?.toLowerCase()}_${s.userName?.cognome?.toLowerCase()}`;
+      return sKey !== userKey;
+    });
+    existing.push(session);
+    localStorage.setItem("hrdn_sessions", JSON.stringify(existing));
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1500);
+  }, [
+    companyType, exerciseText, attivoData, passivoData,
+    attivoValuesN, attivoValuesN1, passivoValuesN, passivoValuesN1,
+    attivoTotalOverrideN, attivoTotalOverrideN1, passivoTotalOverrideN, passivoTotalOverrideN1,
+    contoEconomicoData, ceValuesN, ceValuesN1, ceTotalOverrideN, ceTotalOverrideN1,
+    customStructure, userName, editingSessionUser,
+  ]);
 
   // Auto-balance structure percentages to always sum to 100%
   const handleStructureChange = (newStructure: FinancialStructure) => {
@@ -727,6 +934,32 @@ export default function App() {
     setCeTotalOverrideN(0);
     setCeTotalOverrideN1(0);
     setExerciseText("");
+    localStorage.removeItem("hrdn_appState");
+    localStorage.removeItem("formulaCalculatorState");
+  };
+
+  // Load a saved session's data into all state and switch to main view
+  const loadSessionData = (data: any, sessionUser?: { nome: string; cognome: string }) => {
+    setCompanyType(data.companyType ?? "industrial");
+    setExerciseText(data.exerciseText ?? "");
+    setAttivoData(data.attivoData ?? createEmptyAttivoData());
+    setPassivoData(data.passivoData ?? createEmptyPassivoData());
+    setContoEconomicoData(data.contoEconomicoData ?? createEmptyContoEconomicoData());
+    setAttivoValuesN(data.attivoValuesN ?? {});
+    setAttivoValuesN1(data.attivoValuesN1 ?? {});
+    setPassivoValuesN(data.passivoValuesN ?? {});
+    setPassivoValuesN1(data.passivoValuesN1 ?? {});
+    setCeValuesN(data.ceValuesN ?? {});
+    setCeValuesN1(data.ceValuesN1 ?? {});
+    setAttivoTotalOverrideN(data.attivoTotalOverrideN ?? 0);
+    setAttivoTotalOverrideN1(data.attivoTotalOverrideN1 ?? 0);
+    setPassivoTotalOverrideN(data.passivoTotalOverrideN ?? 0);
+    setPassivoTotalOverrideN1(data.passivoTotalOverrideN1 ?? 0);
+    setCeTotalOverrideN(data.ceTotalOverrideN ?? 0);
+    setCeTotalOverrideN1(data.ceTotalOverrideN1 ?? 0);
+    if (data.customStructure) setCustomStructure(data.customStructure);
+    setEditingSessionUser(sessionUser ?? null);
+    setCurrentView("main");
   };
 
   const applyPreset = (type: "industrial" | "mercantile") => {
@@ -967,9 +1200,30 @@ export default function App() {
           {/* Shine brand text — UIverse by neerajbaniwal */}
           <span className="btn-shine">hrdn design</span>
           <div className="flex items-center gap-3 max-[617px]:gap-2">
+            {/* UIverse Bookmark/Save Button by vinodjangid07 — MIT License */}
+            {!(isAdminLoggedIn && editingSessionUser) && (
+              <button className={`bookmarkBtn ${saveFlash ? "saved" : ""}`} onClick={handleSaveSession}>
+                <span className="IconContainer">
+                  <svg className="icon" viewBox="0 0 384 512" height="0.9em" xmlns="http://www.w3.org/2000/svg" fill="white">
+                    <path d="M0 48V487.7C0 501.1 10.9 512 24.3 512c5 0 9.9-1.5 14-4.4L192 400 345.7 507.6c4.1 2.9 9 4.4 14 4.4c13.4 0 24.3-10.9 24.3-24.3V48c0-26.5-21.5-48-48-48H48C21.5 0 0 21.5 0 48z" />
+                  </svg>
+                </span>
+                <p className="text">Salva</p>
+              </button>
+            )}
             {/* User Profile Button — UIverse by reglobby */}
-            <button className="user-profile">
-              <div className="user-profile-inner">
+            <button
+              className="user-profile"
+              onClick={() => {
+                if (isAdminLoggedIn) {
+                  setCurrentView(currentView === "admin" ? "main" : "admin");
+                } else {
+                  setAdminError("");
+                  setShowAdminDialog(true);
+                }
+              }}
+            >
+              <div className={`user-profile-inner ${isAdminLoggedIn ? "admin-active" : ""}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="w-5 h-5 max-[617px]:w-4 max-[617px]:h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                 </svg>
@@ -996,6 +1250,72 @@ export default function App() {
         </div>
       </nav>
 
+      {/* Admin Login Dialog */}
+      <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
+        <DialogContent className={`max-w-sm ${darkMode ? "bg-[#1a1a2e] border-[#2a2a3e] text-white" : ""}`}>
+          <DialogHeader>
+            <DialogTitle className={darkMode ? "text-white" : ""}>Accesso Amministratore</DialogTitle>
+            <DialogDescription className={darkMode ? "text-slate-400" : ""}>
+              Inserisci le credenziali per accedere alla dashboard
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <Input
+              type="text"
+              placeholder="Nome"
+              value={adminNome}
+              onChange={(e) => { setAdminNome(e.target.value); setAdminError(""); }}
+              className={darkMode ? "bg-[#252540] border-[#3a3a50] text-white placeholder:text-gray-500" : ""}
+              onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
+            />
+            <Input
+              type="text"
+              placeholder="Cognome"
+              value={adminCognome}
+              onChange={(e) => { setAdminCognome(e.target.value); setAdminError(""); }}
+              className={darkMode ? "bg-[#252540] border-[#3a3a50] text-white placeholder:text-gray-500" : ""}
+              onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
+            />
+            <Input
+              type="password"
+              placeholder="Password"
+              value={adminPassword}
+              onChange={(e) => { setAdminPassword(e.target.value); setAdminError(""); }}
+              className={darkMode ? "bg-[#252540] border-[#3a3a50] text-white placeholder:text-gray-500" : ""}
+              onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
+            />
+            {adminError && (
+              <p className="text-sm text-red-500 font-medium">{adminError}</p>
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowAdminDialog(false)} className={darkMode ? "border-slate-600 text-slate-300 hover:bg-slate-700" : ""}>
+              Annulla
+            </Button>
+            <Button onClick={handleAdminLogin} className="bg-violet-600 hover:bg-violet-700 text-white">
+              Accedi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Conditional View: Admin Dashboard vs Main Content */}
+      {currentView === "admin" ? (
+        <div className="max-w-[1920px] mx-auto p-6 max-[617px]:p-3">
+          <button
+            onClick={() => setCurrentView("main")}
+            className={`flex items-center gap-2 mb-6 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              darkMode
+                ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Torna alla pagina principale
+          </button>
+          <AdminDashboard darkMode={darkMode} onLoadSession={loadSessionData} />
+        </div>
+      ) : (
       <div className="max-w-[1920px] mx-auto p-6 max-[617px]:p-3">
         {/* Exercise Text Area */}
         <div className={`mb-6 max-[617px]:mb-4 rounded-xl shadow-lg p-6 max-[617px]:p-3 border transition-colors duration-300 ${
@@ -1207,6 +1527,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      )}
     </div>
     </>
   );

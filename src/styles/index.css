@@ -149,6 +149,19 @@
   }
 }
 
+/* Admin logged-in indicator */
+.user-profile-inner.admin-active {
+  background-color: #7c3aed;
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
+}
+.user-profile-inner.admin-active svg {
+  stroke: white;
+}
+.dark .user-profile-inner.admin-active {
+  background-color: #7c3aed;
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+}
+
 /* UIverse Switch by Admin12121 — MIT License */
 
 /* Shimmer line for card headers */
@@ -341,3 +354,87 @@
 .dark .border-gray-300 { border-color: #475569 !important; }
 .dark .hover\:bg-gray-200:hover { background-color: #475569 !important; }
 .dark .hover\:bg-gray-100:hover { background-color: #334155 !important; }
+
+/* UIverse Bookmark/Save Button by vinodjangid07 — MIT License */
+.bookmarkBtn {
+  width: 100px;
+  height: 40px;
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.349);
+  background-color: rgb(12, 12, 12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition-duration: 0.3s;
+  overflow: hidden;
+}
+.bookmarkBtn .IconContainer {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(to bottom, rgb(255, 136, 255), rgb(172, 70, 255));
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+  transition-duration: 0.3s;
+}
+.bookmarkBtn .IconContainer .icon {
+  border-radius: 1px;
+}
+.bookmarkBtn .text {
+  width: 0;
+  overflow: hidden;
+  transition-duration: 0.3s;
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+}
+.bookmarkBtn:hover .IconContainer {
+  width: 25px;
+  height: 25px;
+  border-radius: 50px;
+  transition-duration: 0.3s;
+}
+.bookmarkBtn:hover .text {
+  width: 60px;
+  transition-duration: 0.3s;
+  padding-left: 10px;
+}
+.bookmarkBtn:hover {
+  transition-duration: 0.3s;
+}
+.bookmarkBtn:active {
+  transform: scale(0.95);
+  transition-duration: 0.3s;
+}
+.bookmarkBtn.saved {
+  border-color: rgb(172, 70, 255);
+}
+.bookmarkBtn.saved .IconContainer {
+  background: linear-gradient(to bottom, rgb(100, 255, 100), rgb(50, 200, 50));
+}
+@media (max-width: 617px) {
+  .bookmarkBtn {
+    width: 85px;
+    height: 34px;
+  }
+  .bookmarkBtn .IconContainer {
+    width: 25px;
+    height: 25px;
+  }
+  .bookmarkBtn .text {
+    font-size: 13px;
+  }
+  .bookmarkBtn:hover .IconContainer {
+    width: 22px;
+    height: 22px;
+  }
+  .bookmarkBtn:hover .text {
+    width: 50px;
+    padding-left: 8px;
+  }
+}

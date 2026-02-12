@@ -100,16 +100,26 @@ export function BalanceSheetSection({
     return rows;
   };
 
-  /* Sum N / N-1 values across direct children (level 1) of a level 0 item */
-  const sumChildrenValues = (item: BalanceSheetItemData, values: Record<string, number>): number => {
-    if (!item.children) return 0;
-    return item.children.reduce((sum, child) => sum + (values[child.id] ?? 0), 0);
+  /* Recursive value resolver:
+     - Leaf items (no children): return manual value
+     - Parent items: return the MAX of manual value and children sum.
+       This way if you set the total first (e.g. 100k) then start filling children (e.g. 20k),
+       the total stays at 100k until children sum exceeds it. */
+  const getItemValue = (item: BalanceSheetItemData, values: Record<string, number>): number => {
+    if (!item.children || item.children.length === 0) return values[item.id] ?? 0;
+    const childrenSum = item.children.reduce((sum, child) => sum + getItemValue(child, values), 0);
+    const manualValue = values[item.id] ?? 0;
+    return Math.max(manualValue, childrenSum);
   };
 
-  /* Level 0 value: if manually overridden use that, otherwise sum of children */
+  /* Level 0 value: recursive sum through all levels */
   const getLevel0Value = (item: BalanceSheetItemData, values: Record<string, number>): number => {
-    if (item.id in values) return values[item.id];
-    return sumChildrenValues(item, values);
+    return getItemValue(item, values);
+  };
+
+  /* Parent value for level 1 items with children */
+  const getParentValue = (item: BalanceSheetItemData, values: Record<string, number>): number => {
+    return getItemValue(item, values);
   };
 
   /* Mobile-friendly short labels for ≤617px */
@@ -126,7 +136,7 @@ export function BalanceSheetSection({
     "debiti-fornitori": "Debiti v/ fornitori",
     "debiti-bancari-breve": "Debiti v/ banche",
     // Passivo level 0
-    "fondi-debiti-mlt": "B. FONDI E DEBITI M/L TERMINE",
+    "fondi-debiti-mlt": "B. FONDI E DEBITI M/L Tot.",
   };
 
   /* Short title for footer on mobile */
@@ -272,6 +282,15 @@ export function BalanceSheetSection({
                       )}
                       {item.level === 1 && (
                         <EditableValue
+                          value={getParentValue(item, valuesN)}
+                          onChange={(v) => onChangeN?.(item.id, v)}
+                          readOnly={false}
+                          level={item.level}
+                          darkMode={darkMode}
+                        />
+                      )}
+                      {item.level === 2 && (
+                        <EditableValue
                           value={valuesN[item.id] ?? 0}
                           onChange={(v) => onChangeN?.(item.id, v)}
                           readOnly={false}
@@ -295,6 +314,15 @@ export function BalanceSheetSection({
                         />
                       )}
                       {item.level === 1 && (
+                        <EditableValue
+                          value={getParentValue(item, valuesN1)}
+                          onChange={(v) => onChangeN1?.(item.id, v)}
+                          readOnly={false}
+                          level={item.level}
+                          darkMode={darkMode}
+                        />
+                      )}
+                      {item.level === 2 && (
                         <EditableValue
                           value={valuesN1[item.id] ?? 0}
                           onChange={(v) => onChangeN1?.(item.id, v)}
