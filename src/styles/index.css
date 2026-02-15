@@ -2,6 +2,20 @@
 @import './tailwind.css';
 @import './theme.css';
 
+/* 🎯 SCALING PER SCHERMI GRANDI (LIM, Lavagne Interattive, >1930px) */
+/* TEMPORANEAMENTE COMMENTATO */
+/* @media (min-width: 1930px) {
+  html {
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 2560px) {
+  html {
+    font-size: 24px;
+  }
+} */
+
 /* UIverse Loader by aryamitra06 — MIT License */
 .loader {
   display: flex;
@@ -23,6 +37,20 @@
 .loader .bar:nth-child(3) {
   animation-delay: .5s;
 }
+
+/* Scaling per schermi grandi (LIM) */
+/* TEMPORANEAMENTE COMMENTATO */
+/* @media (min-width: 1930px) {
+  .loader .bar {
+    width: 5px;
+    height: 32px;
+  }
+  .loader .bar:nth-child(2) {
+    height: 55px;
+    margin: 0 8px;
+  }
+} */
+
 @keyframes scale-up4 {
   20% {
     background-color: #ffff;
@@ -40,6 +68,7 @@
   background: linear-gradient(to right, #9f9f9f 0, #fff 10%, #868686 20%);
   background-position: 0;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shine 3s infinite linear;
   animation-fill-mode: forwards;
@@ -54,6 +83,15 @@
               top 0.8s cubic-bezier(0.4, 0, 0.2, 1),
               left 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Scaling per schermi grandi (LIM) */
+/* TEMPORANEAMENTE COMMENTATO */
+/* @media (min-width: 1930px) {
+  .btn-shine-hero {
+    font-size: 72px;
+    padding: 18px 72px;
+  }
+} */
 
 @media (max-width: 617px) {
   .btn-shine-hero {
@@ -97,6 +135,16 @@
   border: none;
   padding: 0;
 }
+
+/* Scaling per schermi grandi (LIM) */
+/* TEMPORANEAMENTE COMMENTATO */
+/* @media (min-width: 1930px) {
+  .user-profile {
+    width: 56px;
+    height: 56px;
+  }
+} */
+
 .user-profile:hover,
 .user-profile:focus {
   background-color: rgba(203, 213, 225, 1);
@@ -209,6 +257,7 @@
   background: linear-gradient(to right, #9f9f9f 0, #fff 10%, #868686 20%);
   background-position: 0;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shine 3s infinite linear;
   animation-fill-mode: forwards;
@@ -219,6 +268,15 @@
   white-space: nowrap;
   font-family: "Poppins", sans-serif;
 }
+
+/* Scaling per schermi grandi (LIM) */
+/* TEMPORANEAMENTE COMMENTATO */
+/* @media (min-width: 1930px) {
+  .btn-shine {
+    font-size: 28px;
+    padding: 16px 60px;
+  }
+} */
 
 @keyframes shine {
   0% {
@@ -245,6 +303,25 @@
   height: 40px;
 }
 
+/* Scaling per schermi grandi (LIM) */
+/* TEMPORANEAMENTE COMMENTATO */
+/* @media (min-width: 1930px) {
+  .switch-button {
+    height: 52px;
+  }
+  .switch-button .switch-outer {
+    width: 100px;
+    height: 100%;
+  }
+  .switch-button .switch-outer label .switch-inner {
+    width: 36px;
+    height: 36px;
+  }
+  .switch-button .switch-outer input[type="checkbox"]:checked + label .switch-inner {
+    transform: translateX(calc(100px - 36px - 12px));
+  }
+} */
+
 .switch-button .switch-outer {
   height: 100%;
   background: #252532;
@@ -256,6 +333,14 @@
   display: flex;
   align-items: center;
   cursor: pointer;
+  transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* Light mode: colori chiari */
+body:not(.dark) .switch-button .switch-outer {
+  background: #e2e8f0;
+  box-shadow: inset 0px 2px 4px 0px rgba(0,0,0,0.1), 0px 1px 2px 0px rgba(0,0,0,0.05);
+  border: 1px solid #cbd5e1;
 }
 
 .switch-button .switch-outer input[type="checkbox"] {
@@ -357,11 +442,11 @@
 
 /* UIverse Bookmark/Save Button by vinodjangid07 — MIT License */
 .bookmarkBtn {
-  width: 100px;
+  width: 90px;
   height: 40px;
   border-radius: 40px;
   border: 1px solid rgba(255, 255, 255, 0.349);
-  background-color: rgb(12, 12, 12);
+  background-color: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -369,6 +454,43 @@
   transition-duration: 0.3s;
   overflow: hidden;
 }
+
+/* Dark mode: mantiene trasparente */
+.dark .bookmarkBtn {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.349);
+}
+
+/* Light mode: trasparente con bordo scuro */
+body:not(.dark) .bookmarkBtn {
+  background-color: transparent;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Scaling per schermi grandi (LIM) */
+/* TEMPORANEAMENTE COMMENTATO */
+/* @media (min-width: 1930px) {
+  .bookmarkBtn {
+    width: 130px;
+    height: 52px;
+  }
+  .bookmarkBtn .IconContainer {
+    width: 38px;
+    height: 38px;
+  }
+  .bookmarkBtn .text {
+    font-size: 18px;
+  }
+  .bookmarkBtn:hover .IconContainer {
+    width: 35px;
+    height: 35px;
+  }
+  .bookmarkBtn:hover .text {
+    width: 75px;
+    padding-left: 15px;
+  }
+} */
+
 .bookmarkBtn .IconContainer {
   width: 30px;
   height: 30px;
@@ -392,6 +514,11 @@
   font-weight: 600;
   color: white;
   white-space: nowrap;
+}
+
+/* Light mode: testo scuro */
+body:not(.dark) .bookmarkBtn .text {
+  color: #1e293b;
 }
 .bookmarkBtn:hover .IconContainer {
   width: 25px;
@@ -419,7 +546,7 @@
 }
 @media (max-width: 617px) {
   .bookmarkBtn {
-    width: 85px;
+    width: 75px;
     height: 34px;
   }
   .bookmarkBtn .IconContainer {
@@ -437,4 +564,230 @@
     width: 50px;
     padding-left: 8px;
   }
+}
+
+/* ========================================
+   GLOBAL CURSOR POINTER STYLES
+   ======================================== */
+
+/* Interactive elements should always have pointer cursor */
+button,
+a,
+[role="button"],
+[role="link"],
+[onclick],
+.cursor-pointer,
+input[type="checkbox"],
+input[type="radio"],
+select,
+.clickable {
+  cursor: pointer !important;
+}
+
+/* Specific interactive components */
+.drag-handle-header,
+[draggable="true"],
+.bookmarkBtn,
+.user-profile,
+.switch-mode,
+input[type="number"]:not([disabled]),
+input[type="text"]:not([disabled]),
+textarea:not([disabled]) {
+  cursor: pointer !important;
+}
+
+/* Cells and interactive table elements */
+td input,
+th button,
+[data-cell],
+.balance-sheet-cell {
+  cursor: pointer !important;
+}
+
+/* Hover cards and interactive cards */
+.hover\:shadow-md:hover,
+.hover\:bg-gray-100:hover,
+.hover\:bg-gray-200:hover,
+.transition-colors,
+.transition-all {
+  cursor: pointer !important;
+}
+
+/* ========================================
+   FIX: ELIMINATE BLANK FOOTER AREA
+   ======================================== */
+
+/* Prevent overflow from creating extra space */
+html, body {
+  overflow-x: hidden;
+  min-height: 100vh;
+  height: auto;
+}
+
+/* Ensure main container doesn't extend beyond viewport */
+#root {
+  min-height: 100vh;
+  height: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Prevent floating elements from extending page height */
+[style*="position: fixed"],
+[style*="position: absolute"] {
+  pointer-events: auto;
+}
+
+/* Ensure drag layers don't create scroll */
+.react-draggable,
+.rnd-wrapper {
+  pointer-events: auto;
+}
+
+/* Limit drag bounds to prevent elements going offscreen */
+.rnd-wrapper > div {
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+}
+
+/* ========================================
+   DRAGGABLE CARD IMPROVEMENTS
+   ======================================== */
+
+/* Smooth transitions for docked cards */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Grid auto-reflow when cards float */
+.grid {
+  transition: all 0.3s ease-in-out;
+}
+
+.grid > * {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Prevent text selection during drag */
+.drag-handle-header,
+[draggable="true"],
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Visual feedback during drag */
+[draggable="true"]:active {
+  opacity: 0.7;
+  cursor: grabbing !important;
+}
+
+/* Ensure grab cursor on dragable headers */
+.cursor-grab {
+  cursor: grab !important;
+}
+
+.cursor-grab:active,
+.cursor-grabbing,
+.active\:cursor-grabbing:active {
+  cursor: grabbing !important;
+}
+
+/* ============================================ */
+/* Dashboard Modern Buttons - UIverse Inspired */
+/* ============================================ */
+
+.dashboard-button {
+  position: relative;
+  padding: 1.2em 2.5em;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'Montserrat', sans-serif;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+}
+
+.dashboard-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.dashboard-button:active {
+  transform: scale(0.98);
+}
+
+.dashboard-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.dashboard-button:hover::before {
+  transform: translateX(100%);
+}
+
+.dashboard-button.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dashboard-button.secondary {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+.dashboard-button.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.dashboard-button svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s;
+}
+
+.dashboard-button:hover svg {
+  transform: scale(1.1);
+}
+
+/* Slide-down animation for project menu */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.project-menu-enter {
+  animation: slideDown 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+}
+
+/* Card hover effects */
+.project-card {
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+}
+
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
 }

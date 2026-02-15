@@ -1,12 +1,32 @@
 import { useState, useEffect } from "react";
 import { Download, Trash2, User, Calendar, Clock, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { fetchAllSessions, deleteSession } from "../../lib/supabaseClient";
+
+export interface SessionData {
+  companyType?: string;
+  exerciseText?: string;
+  customStructure?: {
+    immobilizzazioni?: number;
+    attivoCircolante?: number;
+    patrimonioNetto?: number;
+    debitiMLT?: number;
+    debitiBreve?: number;
+  };
+  attivoValuesN?: Record<string, number>;
+  passivoValuesN?: Record<string, number>;
+  ceValuesN?: Record<string, number>;
+  formulaCalculatorState?: {
+    metrics: Record<string, number | null>;
+    manuallySet: string[];
+  };
+}
 
 export interface SavedSession {
   id: string;
-  userName: { nome: string; cognome: string };
-  savedAt: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any;
+  user_name: string;
+  user_surname: string;
+  saved_at: string;
+  data: SessionData;
 }
 
 interface AdminDashboardProps {
@@ -18,26 +38,17 @@ export default function AdminDashboard({ darkMode, onLoadSession }: AdminDashboa
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Load sessions from localStorage (poll every 2s for real-time updates)
-  const loadSessions = () => {
-    try {
-      const raw = localStorage.getItem("hrdn_sessions");
-      if (raw) {
-        const parsed: SavedSession[] = JSON.parse(raw);
-        // Sort newest first
-        parsed.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
-        setSessions(parsed);
-      } else {
-        setSessions([]);
-      }
-    } catch {
-      setSessions([]);
+  // Load sessions from Supabase (poll every 5s for real-time updates)
+  const loadSessions = async () => {
+    const result = await fetchAllSessions();
+    if (result.success && result.data) {
+      setSessions(result.data);
     }
   };
 
   useEffect(() => {
     loadSessions();
-    const interval = setInterval(loadSessions, 2000);
+    const interval = setInterval(loadSessions, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -46,17 +57,20 @@ export default function AdminDashboard({ darkMode, onLoadSession }: AdminDashboa
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `sessione_${session.userName.nome}_${session.userName.cognome}_${new Date(session.savedAt).toISOString().slice(0, 10)}.json`;
+    a.download = `sessione_${session.user_name}_${session.user_surname}_${new Date(session.saved_at).toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = sessions.filter((s) => s.id !== id);
-    localStorage.setItem("hrdn_sessions", JSON.stringify(updated));
-    setSessions(updated);
+  const handleDelete = async (id: string) => {
+    const result = await deleteSession(id);
+    if (result.success) {
+      loadSessions(); // Ricarica la lista
+    } else {
+      alert('Errore nell\'eliminazione della sessione');
+    }
   };
 
   const formatDate = (iso: string) => {
@@ -87,6 +101,12 @@ export default function AdminDashboard({ darkMode, onLoadSession }: AdminDashboa
       <div className="flex flex-col gap-4 max-[617px]:gap-3">
         {sessions.map((session) => {
           const isExpanded = expandedId === session.id;
+          
+          // Debug: log formula calculator data
+          if (isExpanded && session.data.formulaCalculatorState) {
+            console.log('🔍 FormulaCalculator data in session:', session.data.formulaCalculatorState);
+          }
+          
           return (
             <div
               key={session.id}
@@ -110,16 +130,16 @@ export default function AdminDashboard({ darkMode, onLoadSession }: AdminDashboa
                     </div>
                     <div className="min-w-0">
                       <h3 className={`font-semibold text-base max-[617px]:text-sm truncate ${darkMode ? "text-white" : "text-gray-900"}`}>
-                        {session.userName.nome} {session.userName.cognome}
+                        {session.user_name} {session.user_surname}
                       </h3>
                       <div className={`flex items-center gap-3 max-[617px]:gap-2 text-xs mt-0.5 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {formatDate(session.savedAt)}
+                          {formatDate(session.saved_at)}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {formatTime(session.savedAt)}
+                          {formatTime(session.saved_at)}
                         </span>
                       </div>
                     </div>
@@ -128,7 +148,7 @@ export default function AdminDashboard({ darkMode, onLoadSession }: AdminDashboa
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                      onClick={() => onLoadSession?.(session.data, session.userName)}
+                      onClick={() => onLoadSession?.(session.data, { nome: session.user_name, cognome: session.user_surname })}
                       className={`p-2 rounded-lg transition-colors ${
                         darkMode
                           ? "hover:bg-violet-900/30 text-slate-400 hover:text-violet-400"
@@ -212,8 +232,8 @@ export default function AdminDashboard({ darkMode, onLoadSession }: AdminDashboa
                     <div>
                       <div className="mb-2">
                         <div className={`text-xs font-semibold mb-1 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Utente</div>
-                        <div className={`text-base font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{session.userName.nome} {session.userName.cognome}</div>
-                        <div className={`text-xs ${darkMode ? "text-slate-400" : "text-gray-500"}`}>{formatDate(session.savedAt)} {formatTime(session.savedAt)}</div>
+                        <div className={`text-base font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{session.user_name} {session.user_surname}</div>
+                        <div className={`text-xs ${darkMode ? "text-slate-400" : "text-gray-500"}`}>{formatDate(session.saved_at)} {formatTime(session.saved_at)}</div>
                       </div>
                       <div className="mb-2">
                         <div className={`text-xs font-semibold mb-1 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Tipo azienda</div>
@@ -246,6 +266,26 @@ export default function AdminDashboard({ darkMode, onLoadSession }: AdminDashboa
                           <span className="inline-block">Totale Conto Economico: <b>{Object.values(session.data.ceValuesN ?? {}).reduce((a: number, b: number) => a + b, 0).toLocaleString("it-IT")}</b></span>
                         </div>
                       </div>
+                      {session.data.formulaCalculatorState && session.data.formulaCalculatorState.metrics && (
+                        <div className="mb-2">
+                          <div className={`text-xs font-semibold mb-1 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Formule Finanziarie</div>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(session.data.formulaCalculatorState.metrics).map(([key, value]) => {
+                              if (!value || value === null) return null;
+                              // Lista metriche percentuali
+                              const percentageMetrics = ['Roe', 'Roi', 'Ros', 'Rod'];
+                              const isPercentage = percentageMetrics.includes(key);
+                              const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                              
+                              return (
+                                <span key={key} className="inline-block text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">
+                                  {key}: <b>{isPercentage ? `${numValue.toFixed(2)}%` : numValue.toLocaleString("it-IT")}</b>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

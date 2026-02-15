@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Input } from "./ui/input";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 interface BalanceSheetItemData {
   id: string;
@@ -35,6 +36,10 @@ interface BalanceSheetSectionProps {
   onTotalChangeN1?: (value: number) => void;
   /** Start with all categories collapsed */
   startCollapsed?: boolean;
+  /** Specific item IDs that should start collapsed */
+  initialCollapsedIds?: string[];
+  /** ID of the cell to highlight temporarily */
+  highlightedCell?: string | null;
 }
 
 export function BalanceSheetSection({
@@ -48,6 +53,7 @@ export function BalanceSheetSection({
   valuesN1 = {},
   onChangeN,
   onChangeN1,
+  highlightedCell = null,
   structureBar,
   darkMode = false,
   totalOverrideN = 0,
@@ -55,6 +61,7 @@ export function BalanceSheetSection({
   onTotalChangeN,
   onTotalChangeN1,
   startCollapsed = false,
+  initialCollapsedIds = [],
 }: BalanceSheetSectionProps) {
   /* Collect level 0 IDs so only main categories start expanded */
   const collectExpandableIds = (list: BalanceSheetItemData[]): string[] => {
@@ -62,7 +69,12 @@ export function BalanceSheetSection({
   };
 
   const [expandedItems, setExpandedItems] = useState<Set<string>>(
-    () => startCollapsed ? new Set<string>() : new Set(collectExpandableIds(items))
+    () => {
+      if (startCollapsed) return new Set<string>();
+      const allIds = collectExpandableIds(items);
+      // Exclude initialCollapsedIds from the initial expanded set
+      return new Set(allIds.filter(id => !initialCollapsedIds.includes(id)));
+    }
   );
 
   const toggleExpand = (id: string) => {
@@ -87,14 +99,15 @@ export function BalanceSheetSection({
   /* Flatten the tree into visible rows respecting expand/collapse state */
   const flattenVisible = (
     list: BalanceSheetItemData[],
-    depth: number = 0
-  ): { item: BalanceSheetItemData; depth: number }[] => {
-    const rows: { item: BalanceSheetItemData; depth: number }[] = [];
+    depth: number = 0,
+    parentId: string = ""
+  ): { item: BalanceSheetItemData; depth: number; parentId: string }[] => {
+    const rows: { item: BalanceSheetItemData; depth: number; parentId: string }[] = [];
     for (const item of list) {
-      rows.push({ item, depth });
+      rows.push({ item, depth, parentId });
       const hasChildren = item.children && item.children.length > 0;
       if (hasChildren && expandedItems.has(item.id)) {
-        rows.push(...flattenVisible(item.children!, depth + 1));
+        rows.push(...flattenVisible(item.children!, depth + 1, item.id));
       }
     }
     return rows;
@@ -131,7 +144,7 @@ export function BalanceSheetSection({
     "attivita-finanziarie": "III. Attività finanziarie",
     // Passivo level 1
     "utile-perdita": "III. Utile",
-    "tfr": "TFR",
+    "tfr": "C) TFR",
     "debiti-finanziari-mlt": "Debiti finanz. a M/L termine",
     "debiti-fornitori": "Debiti v/ fornitori",
     "debiti-bancari-breve": "Debiti v/ banche",
@@ -148,9 +161,9 @@ export function BalanceSheetSection({
   const total = calculateTotal(items);
   const autoSumN = items.reduce((s, item) => s + getLevel0Value(item, valuesN), 0);
   const autoSumN1 = items.reduce((s, item) => s + getLevel0Value(item, valuesN1), 0);
-  // Show auto-sum when categories have values, otherwise show manual override
-  const totalN = autoSumN > 0 ? autoSumN : totalOverrideN;
-  const totalN1 = autoSumN1 > 0 ? autoSumN1 : totalOverrideN1;
+  // Usa il maggiore tra totale manuale e somma automatica
+  const totalN = Math.max(totalOverrideN, autoSumN);
+  const totalN1 = Math.max(totalOverrideN1, autoSumN1);
 
   const hasBar = structureBar && structureBar.length > 0;
 
@@ -204,7 +217,7 @@ export function BalanceSheetSection({
 
           {/* ---- Body rows ---- */}
           <tbody>
-            {visibleRows.map(({ item, depth }) => {
+            {visibleRows.map(({ item, depth, parentId }) => {
               const hasChildren = item.children && item.children.length > 0;
               const itemTotal = hasChildren
                 ? calculateTotal(item.children!)
@@ -221,19 +234,49 @@ export function BalanceSheetSection({
                   : item.level === 1
                   ? "font-semibold"
                   : "font-normal";
-              const bgColor =
-                item.level === 0
+              
+              // Helper function to check if item should have special background
+              const shouldHaveSpecialBg = (): boolean => {
+                // Check by item's own ID or parent ID
+                const idsToCheck = [item.id, parentId];
+                
+                // Attivo: A (immobilizzazioni) + B (crediti-soci) + their children
+                if (item.id === "crediti-soci" || idsToCheck.includes("crediti-soci") || 
+                    item.id === "immobilizzazioni" || idsToCheck.includes("immobilizzazioni")) {
+                  return true;
+                }
+                
+                // Passivo: A (patrimonio-netto) + D (debiti) + E (ratei-risconti-passivi) + their children
+                if (item.id === "patrimonio-netto" || idsToCheck.includes("patrimonio-netto") || 
+                    item.id === "debiti" || idsToCheck.includes("debiti") ||
+                    item.id === "ratei-risconti-passivi" || idsToCheck.includes("ratei-risconti-passivi")) {
+                  return true;
+                }
+                
+                return false;
+              };
+              
+              const hasSpecialBg = shouldHaveSpecialBg();
+              
+              const bgColor = hasSpecialBg
+                ? (darkMode ? "bg-[#263247]" : "bg-[#f4f9ff]")
+                : item.level === 0
                   ? darkMode ? "bg-slate-800/50" : "bg-gray-50"
                   : darkMode ? "bg-[#1e293b]" : "bg-white";
+              
               const borderStyle =
                 item.level === 0
                   ? darkMode ? "border-b-2 border-slate-600" : "border-b-2 border-gray-300"
                   : darkMode ? "border-b border-slate-700" : "border-b border-gray-200";
+              
+              const hoverColor = hasSpecialBg
+                ? (darkMode ? "hover:bg-[#2d3850]" : "hover:bg-[#e6f0ff]")
+                : (darkMode ? "hover:bg-slate-700/50" : "hover:bg-gray-100");
 
               return (
                 <tr
                   key={item.id}
-                  className={`${bgColor} ${borderStyle} ${darkMode ? "hover:bg-slate-700/50" : "hover:bg-gray-100"} transition-colors`}
+                  className={`${bgColor} ${borderStyle} ${hoverColor} transition-colors`}
                 >
                   {/* Label cell */}
                   <td
@@ -247,15 +290,15 @@ export function BalanceSheetSection({
                       {hasChildren ? (
                         <span className="p-1 shrink-0">
                           {expandedItems.has(item.id) ? (
-                            <ChevronDown className={`w-4 h-4 ${darkMode ? "text-slate-400" : "text-gray-600"}`} />
+                            <ChevronDown className={`w-4 h-4 ${hasSpecialBg ? "text-slate-300" : (darkMode ? "text-slate-400" : "text-gray-600")}`} />
                           ) : (
-                            <ChevronRight className={`w-4 h-4 ${darkMode ? "text-slate-400" : "text-gray-600"}`} />
+                            <ChevronRight className={`w-4 h-4 ${hasSpecialBg ? "text-slate-300" : (darkMode ? "text-slate-400" : "text-gray-600")}`} />
                           )}
                         </span>
                       ) : (
                         <span className="w-6 shrink-0" />
                       )}
-                      <span className={`${fontSize} ${fontWeight} ${darkMode ? "text-slate-200" : "text-gray-800"}`}>
+                      <span className={`${fontSize} ${fontWeight} ${hasSpecialBg ? (darkMode ? "text-white" : "text-gray-800") : (darkMode ? "text-slate-200" : "text-gray-800")}`}>
                         {shortLabels[item.id] ? (
                           <>
                             <span className="max-[1000px]:hidden">{item.label}</span>
@@ -278,6 +321,8 @@ export function BalanceSheetSection({
                           readOnly={false}
                           level={item.level}
                           darkMode={darkMode}
+                          highlighted={highlightedCell === item.id}
+                          itemId={item.id}
                         />
                       )}
                       {item.level === 1 && (
@@ -287,6 +332,8 @@ export function BalanceSheetSection({
                           readOnly={false}
                           level={item.level}
                           darkMode={darkMode}
+                          highlighted={highlightedCell === item.id}
+                          itemId={item.id}
                         />
                       )}
                       {item.level === 2 && (
@@ -296,6 +343,8 @@ export function BalanceSheetSection({
                           readOnly={false}
                           level={item.level}
                           darkMode={darkMode}
+                          highlighted={highlightedCell === item.id}
+                          itemId={item.id}
                         />
                       )}
                     </td>
@@ -409,11 +458,14 @@ interface EditableValueProps {
   readOnly: boolean;
   level: number;
   darkMode?: boolean;
+  highlighted?: boolean;
+  itemId?: string;
 }
 
-function EditableValue({ value, onChange, readOnly, level, darkMode = false }: EditableValueProps) {
+function EditableValue({ value, onChange, readOnly, level, darkMode = false, highlighted = false }: EditableValueProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [rawInput, setRawInput] = useState("");
+  const { formatCurrency } = useCurrency();
 
   const fontSize = level === -1 ? "text-lg max-[1000px]:text-xs" : level === 0 ? "text-base max-[1000px]:text-xs" : "text-sm max-[1000px]:text-[11px]";
   const fontWeight =
@@ -421,7 +473,7 @@ function EditableValue({ value, onChange, readOnly, level, darkMode = false }: E
 
   const formatWithDots = (n: number): string => {
     if (n === 0) return "0";
-    return n.toLocaleString("it-IT");
+    return formatCurrency(n);
   };
 
   const parseInput = (str: string): number => {
@@ -452,7 +504,7 @@ function EditableValue({ value, onChange, readOnly, level, darkMode = false }: E
   if (readOnly) {
     return (
       <span className={`${fontSize} ${fontWeight} ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
-        €{value.toLocaleString("it-IT")}
+        {formatCurrency(value)}
       </span>
     );
   }
@@ -472,10 +524,12 @@ function EditableValue({ value, onChange, readOnly, level, darkMode = false }: E
 
   return (
     <span
-      className={`${fontSize} ${fontWeight} cursor-pointer hover:underline ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"}`}
+      className={`${fontSize} ${fontWeight} cursor-pointer hover:underline ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"} ${
+        highlighted ? "bg-green-200 dark:bg-green-900/50 px-2 py-1 rounded transition-all duration-2000" : ""
+      }`}
       onClick={handleStartEdit}
     >
-      €{value.toLocaleString("it-IT")}
+      {value.toLocaleString("it-IT")}
     </span>
   );
 }

@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip";
 import { RotateCcw, Calculator, Percent, Euro } from "lucide-react";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 // Types
 interface Formula {
@@ -42,6 +43,7 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
     description: "Rendimento del capitale proprio",
     isPercentage: true,
     hasFormulas: true,
+    notes: "Il Reddito Netto (Rn) corrisponde all'Utile netto o al Reddito d'esercizio.",
   },
   Roi: {
     label: "ROI",
@@ -129,6 +131,24 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
     isPercentage: false,
     hasFormulas: true,
   },
+  CostiProduzione: {
+    label: "Costi della produzione",
+    description: "Costi totali della produzione",
+    isPercentage: false,
+    hasFormulas: true,
+  },
+  Pf: {
+    label: "Proventi Finanziari (Pf)",
+    description: "Proventi finanziari",
+    isPercentage: false,
+    hasFormulas: true,
+  },
+  TassoInteresse: {
+    label: "Tasso di Interesse",
+    description: "Tasso percentuale degli oneri finanziari",
+    isPercentage: true,
+    hasFormulas: true,
+  },
 };
 
 // Formula database
@@ -184,12 +204,18 @@ const FORMULAS: Record<string, Formula[]> = {
       extended: "Ros = Reddito operativo / Ricavi netti × 100",
       priority: 1,
     },
+    {
+      inputs: ["Roi", "IndiceRotazione"],
+      compact: "Ros = Roi / Indice di rotazione",
+      extended: "ROS = ROI / Indice di rotazione",
+      priority: 2,
+    },
   ],
   Rod: [
     {
       inputs: ["Of", "Debiti"],
-      compact: "Rod = Of / Capitale di Terzi × 100",
-      extended: "Rod = Oneri finanziari / Capitale di Terzi × 100",
+      compact: "Rod = Of / Debiti × 100",
+      extended: "Rod = Oneri finanziari / Debiti × 100",
       priority: 1,
     },
   ],
@@ -251,13 +277,25 @@ const FORMULAS: Record<string, Formula[]> = {
       extended: "Of = Debiti × ROD / 100",
       priority: 1,
     },
+    {
+      inputs: ["Ro", "Rai"],
+      compact: "Of = Ro - Rai",
+      extended: "Oneri finanziari (Of) = Ro - Rai",
+      priority: 2,
+    },
   ],
   Rai: [
     {
       inputs: ["Ro", "Of"],
       compact: "Rai = Ro - Of",
-      extended: "Rai = Ro - Of + proventi finanziari",
+      extended: "Reddito ante imposte (Rai) = Reddito operativo - Oneri finanziari (considerando eventuali proventi finanziari e rettifiche)",
       priority: 1,
+    },
+    {
+      inputs: ["Rn", "Imposte"],
+      compact: "Rai = Rn + Imposte",
+      extended: "Reddito ante imposte = Reddito netto + Imposte",
+      priority: 2,
     },
   ],
   RicaviNetti: [
@@ -265,6 +303,42 @@ const FORMULAS: Record<string, Formula[]> = {
       inputs: ["IndiceRotazione", "Ci"],
       compact: "Ricavi netti = Indice di Rotazione × Ci",
       extended: "Ricavi netti = Indice di Rotazione × Capitale investito",
+      priority: 1,
+    },
+    {
+      inputs: ["Ro", "Ros"],
+      compact: "Ricavi netti = Ro / Ros × 100",
+      extended: "Ricavi netti = Reddito operativo / ROS × 100",
+      priority: 2,
+    },
+  ],
+  CostiProduzione: [
+    {
+      inputs: ["RicaviNetti", "Ro"],
+      compact: "Costi Produzione = Ricavi Netti - Ro",
+      extended: "Costi della produzione = Ricavi Netti - Reddito Operativo (Ro)",
+      priority: 1,
+    },
+  ],
+  Pf: [
+    {
+      inputs: ["Ci", "TassoInteresse"],
+      compact: "Pf = Ci × Tasso di interesse / 100",
+      extended: "Proventi Finanziari = Capitale investito × Tasso di interesse / 100",
+      priority: 1,
+    },
+    {
+      inputs: ["Rai", "Ro", "Of"],
+      compact: "Pf = Rai - Ro + Of",
+      extended: "Proventi Finanziari = Rai - Ro + Of",
+      priority: 2,
+    },
+  ],
+  TassoInteresse: [
+    {
+      inputs: ["Of", "Debiti"],
+      compact: "Tasso interesse = Of / Debiti × 100",
+      extended: "Tasso di Interesse = Oneri finanziari / Debiti × 100",
       priority: 1,
     },
   ],
@@ -304,26 +378,30 @@ type MetricState = Record<string, number | null>;
 
 interface FormulaCalculatorProps {
   immobilizzazioniPercent?: number;
+  onMetricChange?: (metric: string, value: number | null) => void;
+  externalValues?: {
+    Rn?: number;
+    Ro?: number;
+    RicaviNetti?: number;
+    Imposte?: number;
+    Debiti?: number;
+    Rai?: number;
+    Of?: number;
+    Cp?: number;
+    CostiProduzione?: number;
+    Pf?: number;
+  };
 }
 
-export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: FormulaCalculatorProps) {
-  const METRICS_ORDER = [
-    "Roe",
-    "Roi",
-    "Rod",
-    "Leverage",
-    "Ros",
-    "Ro",
-    "Rn",
-    "Cp",
-    "Ci",
-    "RicaviNetti",
-    "IndiceRotazione",
-    "Of",
-    "Imposte",
-    "Rai",
-    "Debiti",
-  ];
+export default function FormulaCalculator({ immobilizzazioniPercent = 0, onMetricChange, externalValues }: FormulaCalculatorProps) {
+  const { formatCurrency } = useCurrency();
+  
+  // Organize metrics into logical sections
+  const INDICI_METRICS = ["Roe", "Roi", "Rod", "Ros", "Rai"];
+  const CE_METRICS = ["Ro", "Rn", "RicaviNetti", "CostiProduzione", "Imposte", "Of", "Pf"];
+  const ST_METRICS = ["Cp", "Ci", "Debiti", "Leverage", "IndiceRotazione", "TassoInteresse"];
+  
+  const METRICS_ORDER = [...INDICI_METRICS, ...CE_METRICS, ...ST_METRICS];
 
   const [metrics, setMetrics] = useState<MetricState>({});
   const [manuallySet, setManuallySet] = useState<Set<string>>(new Set());
@@ -354,6 +432,28 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
       }
     }
   }, []);
+
+  // Sync external values from balance sheets to metrics
+  useEffect(() => {
+    if (!externalValues) return;
+    
+    setMetrics(prev => {
+      const updated = { ...prev };
+      let hasChanges = false;
+      
+      // Only update if value exists and differs from current (and not manually set)
+      Object.entries(externalValues).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && !manuallySet.has(key)) {
+          if (prev[key] !== value) {
+            updated[key] = value;
+            hasChanges = true;
+          }
+        }
+      });
+      
+      return hasChanges ? updated : prev;
+    });
+  }, [externalValues, manuallySet]);
 
   // Save to localStorage whenever metrics change
   useEffect(() => {
@@ -495,6 +595,10 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
         delete newErrors[metric];
         return newErrors;
       });
+      // Notify external listeners
+      if (onMetricChange) {
+        onMetricChange(metric, null);
+      }
       return;
     }
 
@@ -564,6 +668,10 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
         delete newErrors[metric];
         return newErrors;
       });
+      // Notify external listeners
+      if (onMetricChange) {
+        onMetricChange(metric, numericValue);
+      }
     }
   };
 
@@ -643,8 +751,10 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
         }
         break;
       case "Ros":
-        if (formula.inputs.includes("RicaviNetti") && m.Ro != null && m.RicaviNetti != null) {
+        if (formula.inputs.includes("RicaviNetti") && m.Ro != null && m.RicaviNetti != null && m.RicaviNetti !== 0) {
           result = (m.Ro / m.RicaviNetti) * 100;
+        } else if (formula.inputs.includes("Roi") && m.Roi != null && m.IndiceRotazione != null && m.IndiceRotazione !== 0) {
+          result = m.Roi / m.IndiceRotazione;
         }
         break;
       case "Rod":
@@ -699,18 +809,24 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
         }
         break;
       case "Of":
-        if (m.Debiti != null && m.Rod != null) {
+        if (formula.inputs.includes("Debiti") && m.Debiti != null && m.Rod != null) {
           result = (m.Debiti * m.Rod) / 100;
+        } else if (formula.inputs.includes("Ro") && m.Ro != null && m.Rai != null) {
+          result = m.Ro - m.Rai;
         }
         break;
       case "Rai":
-        if (m.Ro != null && m.Of != null) {
+        if (formula.inputs.includes("Ro") && m.Ro != null && m.Of != null) {
           result = m.Ro - m.Of;
+        } else if (formula.inputs.includes("Rn") && m.Rn != null && m.Imposte != null) {
+          result = m.Rn + m.Imposte;
         }
         break;
       case "RicaviNetti":
-        if (m.IndiceRotazione != null && m.Ci != null) {
+        if (formula.inputs.includes("IndiceRotazione") && m.IndiceRotazione != null && m.Ci != null) {
           result = m.IndiceRotazione * m.Ci;
+        } else if (formula.inputs.includes("Ro") && m.Ro != null && m.Ros != null && m.Ros !== 0) {
+          result = (m.Ro / m.Ros) * 100;
         }
         break;
       case "IndiceRotazione":
@@ -729,6 +845,23 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
           result = (m.Rn * 100) / immobilizzazioniPercent;
         }
         break;
+      case "CostiProduzione":
+        if (m.RicaviNetti != null && m.Ro != null) {
+          result = m.RicaviNetti - m.Ro;
+        }
+        break;
+      case "Pf":
+        if (formula.inputs.includes("Ci") && m.Ci != null && m.TassoInteresse != null) {
+          result = (m.Ci * m.TassoInteresse) / 100;
+        } else if (formula.inputs.includes("Rai") && m.Rai != null && m.Ro != null && m.Of != null) {
+          result = m.Rai - m.Ro + m.Of;
+        }
+        break;
+      case "TassoInteresse":
+        if (m.Of != null && m.Debiti != null && m.Debiti !== 0) {
+          result = (m.Of / m.Debiti) * 100;
+        }
+        break;
       default:
         break;
     }
@@ -740,6 +873,10 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
       }));
       setManuallySet((prev) => new Set(prev).add(metric));
       setSelectedFormulaMetric(null);
+      // Notify external listeners
+      if (onMetricChange) {
+        onMetricChange(metric, result);
+      }
     }
   };
 
@@ -747,6 +884,8 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
   const handleReset = () => {
     setMetrics({});
     setManuallySet(new Set());
+    setInputValues({});
+    setInputErrors({});
     localStorage.removeItem("formulaCalculatorState");
     setShowResetDialog(false);
   };
@@ -760,7 +899,7 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
       return value.toString();
     } else {
       // Format with thousands separator
-      return Math.round(value).toLocaleString("it-IT");
+      return formatCurrency(Math.round(value));
     }
   };
 
@@ -824,7 +963,7 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
       return value.toString();
     } else {
       // Format with Italian thousands separator (.)
-      return Math.round(value).toLocaleString("it-IT");
+      return formatCurrency(Math.round(value));
     }
   };
 
@@ -864,9 +1003,15 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
           </div>
         </div>
 
-        {/* Metrics Grid - Responsive: 1 col on mobile, 2 on tablet, 4 on desktop */}
-        <div className="grid grid-cols-1 max-[617px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 max-[617px]:gap-2">
-          {METRICS_ORDER.map((metric) => {
+        {/* Metrics Grid - Organized into sections */}
+        
+        {/* Section: INDICI FINANZIARI */}
+        <div className="mb-6 max-[617px]:mb-4">
+          <h3 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-blue-500">
+            Indici Finanziari
+          </h3>
+          <div className="grid grid-cols-1 max-[617px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4 max-[617px]:gap-2">
+            {INDICI_METRICS.map((metric) => {
             const config = METRIC_CONFIG[metric];
             const numSuggestions = suggestedFormulas[metric]?.length || 0;
             const isManuallySet = manuallySet.has(metric);
@@ -932,7 +1077,7 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
                         {config.isPercentage ? (
                           <Percent className="w-4 h-4 text-gray-600" />
                         ) : (
-                          <Euro className="w-4 h-4 text-gray-600" />
+                          metric !== "Leverage" && <Euro className="w-4 h-4 text-gray-600" />
                         )}
                       </div>
                     </div>
@@ -992,6 +1137,185 @@ export default function FormulaCalculator({ immobilizzazioniPercent = 0 }: Formu
               </div>
             );
           })}
+          </div>
+        </div>
+
+        {/* Section: CONTO ECONOMICO */}
+        <div className="mb-6 max-[617px]:mb-4">
+          <h3 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-amber-500">
+            Conto Economico (CE)
+          </h3>
+          <div className="grid grid-cols-1 max-[617px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 max-[617px]:gap-2">
+            {CE_METRICS.map((metric) => {
+              const config = METRIC_CONFIG[metric];
+              const numSuggestions = suggestedFormulas[metric]?.length || 0;
+              const isManuallySet = manuallySet.has(metric);
+              const cellClasses = getCellStyles(metric);
+              const value = metrics[metric];
+              const mostCommonFormula = getMostCommonFormula(metric);
+
+              const hasFormulas = (FORMULAS[metric] || []).length > 0;
+
+              let cellBorderClasses = "border border-gray-200 bg-white cursor-pointer hover:shadow-md transition-shadow";
+              if (numSuggestions === 1) {
+                cellBorderClasses =
+                  "border-4 border-blue-500 bg-white cursor-pointer hover:shadow-md transition-shadow";
+              } else if (numSuggestions > 1) {
+                cellBorderClasses =
+                  "border-2 border-blue-400 bg-blue-50 cursor-pointer hover:shadow-md transition-shadow";
+              }
+
+              return (
+                <div
+                  key={metric}
+                  className={`rounded-lg p-3 max-[617px]:p-2 transition-all h-full min-h-[80px] max-[617px]:min-h-[60px] flex flex-col ${cellBorderClasses}`}
+                  onClick={() => setSelectedFormulaMetric(metric)}
+                  onTouchStart={() => {
+                    const timer = setTimeout(() => setLongPressMetric(metric), 500);
+                    longPressTimerRef.current = timer;
+                  }}
+                  onTouchEnd={() => {
+                    if (longPressTimerRef.current) {
+                      clearTimeout(longPressTimerRef.current);
+                      longPressTimerRef.current = null;
+                    }
+                  }}
+                  onTouchMove={() => {
+                    if (longPressTimerRef.current) {
+                      clearTimeout(longPressTimerRef.current);
+                      longPressTimerRef.current = null;
+                    }
+                  }}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-start justify-between mb-2 cursor-pointer group" onClick={(e) => { e.stopPropagation(); setSelectedFormulaMetric(metric); }}>
+                        <div className="flex items-center gap-1 flex-1">
+                          <Label className="text-sm max-[617px]:text-xs font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {config.label}
+                          </Label>
+                          {config.isPercentage ? (
+                            <Percent className="w-4 h-4 text-gray-600" />
+                          ) : (
+                            metric !== "Leverage" && <Euro className="w-4 h-4 text-gray-600" />
+                          )}
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="text-sm">
+                        <p className="font-semibold">{config.description}</p>
+                        <p className="text-xs mt-1 text-blue-100">Clicca per vedere le formule disponibili</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  <div className="flex-1 flex flex-col">
+                    <div className={`w-full transition-all ${isManuallySet ? "border-2 border-green-500 rounded-lg p-2" : ""} ${inputErrors[metric] ? "border-2 border-red-500 rounded-lg p-2" : ""}`}>
+                      <Input
+                        type="text"
+                        placeholder={!isManuallySet && mostCommonFormula ? mostCommonFormula.compact : ""}
+                        value={inputValues[metric] !== undefined ? inputValues[metric] : formatDisplayValue(value, config.isPercentage)}
+                        onChange={(e) => handleInputChange(metric, e.target.value)}
+                        onBlur={(e) => handleInputBlur(metric, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`text-sm w-full placeholder:italic placeholder:opacity-50 ${isManuallySet && !inputErrors[metric] ? "text-green-700 font-bold border-0" : inputErrors[metric] ? "text-red-600 border-0" : "border-gray-300"}`}
+                      />
+                    </div>
+                    {inputErrors[metric] && <p className="text-xs text-red-600 font-semibold mt-1">{inputErrors[metric]}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Section: STATO PATRIMONIALE */}
+        <div className="mb-0">
+          <h3 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-purple-500">
+            Stato Patrimoniale (ST)
+          </h3>
+          <div className="grid grid-cols-1 max-[617px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 max-[617px]:gap-2">
+            {ST_METRICS.map((metric) => {
+              const config = METRIC_CONFIG[metric];
+              const numSuggestions = suggestedFormulas[metric]?.length || 0;
+              const isManuallySet = manuallySet.has(metric);
+              const cellClasses = getCellStyles(metric);
+              const value = metrics[metric];
+              const mostCommonFormula = getMostCommonFormula(metric);
+
+              const hasFormulas = (FORMULAS[metric] || []).length > 0;
+
+              let cellBorderClasses = "border border-gray-200 bg-white cursor-pointer hover:shadow-md transition-shadow";
+              if (numSuggestions === 1) {
+                cellBorderClasses =
+                  "border-4 border-blue-500 bg-white cursor-pointer hover:shadow-md transition-shadow";
+              } else if (numSuggestions > 1) {
+                cellBorderClasses =
+                  "border-2 border-blue-400 bg-blue-50 cursor-pointer hover:shadow-md transition-shadow";
+              }
+
+              return (
+                <div
+                  key={metric}
+                  className={`rounded-lg p-3 max-[617px]:p-2 transition-all h-full min-h-[80px] max-[617px]:min-h-[60px] flex flex-col ${cellBorderClasses}`}
+                  onClick={() => setSelectedFormulaMetric(metric)}
+                  onTouchStart={() => {
+                    const timer = setTimeout(() => setLongPressMetric(metric), 500);
+                    longPressTimerRef.current = timer;
+                  }}
+                  onTouchEnd={() => {
+                    if (longPressTimerRef.current) {
+                      clearTimeout(longPressTimerRef.current);
+                      longPressTimerRef.current = null;
+                    }
+                  }}
+                  onTouchMove={() => {
+                    if (longPressTimerRef.current) {
+                      clearTimeout(longPressTimerRef.current);
+                      longPressTimerRef.current = null;
+                    }
+                  }}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-start justify-between mb-2 cursor-pointer group" onClick={(e) => { e.stopPropagation(); setSelectedFormulaMetric(metric); }}>
+                        <div className="flex items-center gap-1 flex-1">
+                          <Label className="text-sm max-[617px]:text-xs font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {config.label}
+                          </Label>
+                          {config.isPercentage ? (
+                            <Percent className="w-4 h-4 text-gray-600" />
+                          ) : (
+                            metric !== "Leverage" && <Euro className="w-4 h-4 text-gray-600" />
+                          )}
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="text-sm">
+                        <p className="font-semibold">{config.description}</p>
+                        <p className="text-xs mt-1 text-blue-100">Clicca per vedere le formule disponibili</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  <div className="flex-1 flex flex-col">
+                    <div className={`w-full transition-all ${isManuallySet ? "border-2 border-green-500 rounded-lg p-2" : ""} ${inputErrors[metric] ? "border-2 border-red-500 rounded-lg p-2" : ""}`}>
+                      <Input
+                        type="text"
+                        placeholder={!isManuallySet && mostCommonFormula ? mostCommonFormula.compact : ""}
+                        value={inputValues[metric] !== undefined ? inputValues[metric] : formatDisplayValue(value, config.isPercentage)}
+                        onChange={(e) => handleInputChange(metric, e.target.value)}
+                        onBlur={(e) => handleInputBlur(metric, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`text-sm w-full placeholder:italic placeholder:opacity-50 ${isManuallySet && !inputErrors[metric] ? "text-green-700 font-bold border-0" : inputErrors[metric] ? "text-red-600 border-0" : "border-gray-300"}`}
+                      />
+                    </div>
+                    {inputErrors[metric] && <p className="text-xs text-red-600 font-semibold mt-1">{inputErrors[metric]}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Card>
 
